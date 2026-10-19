@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 import { Spinner } from './Spinner';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'highlight';
 type Size = 'md' | 'lg' | 'xl' | 'icon';
 
 const variants: Record<Variant, string> = {
@@ -11,6 +11,7 @@ const variants: Record<Variant, string> = {
   outline: 'border-[1.5px] border-border bg-transparent text-text hover:bg-surface-2',
   ghost: 'bg-transparent text-text hover:bg-surface-2',
   danger: 'bg-danger text-on-danger hover:brightness-95',
+  highlight: 'bg-highlight text-on-highlight hover:brightness-95',
 };
 
 // En el POS los botones miden al menos 56 px (size="xl").

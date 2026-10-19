@@ -9,3 +9,4 @@ export * from './schemas/catalog';
 export * from './schemas/inventory';
 export * from './catalog-math';
 export * from './schemas/purchases';
+export * from './schemas/pos';

@@ -203,3 +203,113 @@ export interface PurchasesPage extends Page<PurchaseSummaryDto> {
   /** Suma de las compras recibidas (no anuladas) que cumplen los filtros. */
   totalReceived: number;
 }
+
+// ───────────── POS ─────────────
+
+export type OrderItemStatus = 'PENDING' | 'PREPARING' | 'DELIVERED' | 'CANCELLED';
+
+export interface MenuModifierGroup {
+  id: number;
+  name: string;
+  minSelect: number;
+  maxSelect: number;
+  options: { id: number; name: string; priceDelta: number }[];
+}
+
+export interface MenuProduct {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  available: number | null;
+  stockStatus: StockStatus | null;
+  modifierGroups: MenuModifierGroup[];
+}
+
+export interface MenuCategory {
+  id: number;
+  name: string;
+  color: CategoryColor;
+  products: MenuProduct[];
+}
+
+export interface ItemCounts {
+  pending: number;
+  preparing: number;
+  delivered: number;
+}
+
+export interface TabSummaryDto {
+  id: number;
+  customerName: string;
+  tableId: number | null;
+  subtotal: number;
+  /** Unidades vendidas (sin canceladas). */
+  itemCount: number;
+  counts: ItemCounts;
+  openedAt: string;
+}
+
+export interface FloorTableDto {
+  id: number;
+  name: string;
+  zone: string | null;
+  tabs: TabSummaryDto[];
+}
+
+export interface FloorDto {
+  tables: FloorTableDto[];
+  walkIns: TabSummaryDto[];
+}
+
+export interface OrderItemDto {
+  id: number;
+  orderId: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  note: string | null;
+  status: OrderItemStatus;
+  statusChangedAt: string;
+  modifiers: { groupName: string; optionName: string; priceDelta: number }[];
+  cancelReason: string | null;
+}
+
+export interface TabOrderDto {
+  id: number;
+  sentAt: string;
+  createdBy: { id: number; name: string };
+  items: OrderItemDto[];
+}
+
+export interface TabDto extends TabSummaryDto {
+  status: 'OPEN' | 'PAID' | 'CANCELLED';
+  table: { id: number; name: string } | null;
+  openedBy: { id: number; name: string };
+  /** Otras cuentas abiertas en la misma mesa (incluida esta), para cambiar rápido. */
+  siblings: { id: number; customerName: string; subtotal: number }[];
+  orders: TabOrderDto[];
+}
+
+export interface BarOrderDto {
+  id: number;
+  sentAt: string;
+  tab: { id: number; customerName: string; tableName: string | null };
+  createdBy: { id: number; name: string };
+  items: OrderItemDto[];
+}
+
+export interface BarDto {
+  orders: BarOrderDto[];
+  /** Comandas con algo pendiente o en preparación. */
+  activeCount: number;
+}
+
+export interface SendOrderResult {
+  tab: TabDto;
+  orderId: number;
+  /** Artículos que quedaron en negativo (se vendió sin existencia registrada). */
+  stockWarnings: string[];
+}

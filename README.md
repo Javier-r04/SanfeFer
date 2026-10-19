@@ -88,4 +88,5 @@ docs/           Plan técnico
 - **Dinero** en `Decimal`, nunca en `float`.
 - **Inventario**: todo cambio de stock pasa por un solo punto (`apps/api/src/modules/inventory/stock.ts`), dentro de una transacción, con bloqueo de fila y su movimiento en el historial. Las entradas con costo recalculan el **costo promedio ponderado**.
 - **Compras**: se registran como en la factura (cantidad y total de la línea); el costo por unidad se deriva. La compra y el aumento de stock van en una sola transacción. Anular devuelve stock y costo promedio, y se rechaza si lo comprado ya se usó.
+- **POS**: el inventario se descuenta al **enviar a barra** (receta + extras). Cancelar un producto pendiente devuelve el inventario; si ya se estaba preparando o se entregó, requiere el PIN de un administrador y se registra como merma. La orden en curso se guarda en el dispositivo hasta enviarla. Mesas, cuentas y barra se refrescan cada 5 s.
 - **Costo y margen del producto**: receta + la opción más barata de cada grupo de extras obligatorio (p. ej. la cerveza de la michelada). La disponibilidad considera también esos extras (Gallo **o** Corona).

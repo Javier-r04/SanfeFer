@@ -9,7 +9,11 @@ import { NotFoundPage } from '@/features/common/NotFoundPage';
 import { InventoryPage } from '@/features/inventory/InventoryPage';
 import { NewPurchasePage } from '@/features/purchases/NewPurchasePage';
 import { PurchasesPage } from '@/features/purchases/PurchasesPage';
+import { BarPage } from '@/features/pos/BarPage';
+import { FloorPage } from '@/features/pos/FloorPage';
+import { OrderPage } from '@/features/pos/OrderPage';
 import { PosPlaceholderPage } from '@/features/pos/PosPlaceholderPage';
+import { TabPage } from '@/features/pos/TabPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { AdminLayout } from './layouts/AdminLayout';
 import { PosLayout } from './layouts/PosLayout';
@@ -40,26 +44,10 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      {
-        index: true,
-        element: (
-          <PosPlaceholderPage
-            title="Mesas"
-            phase={3}
-            description="Aquí verás las mesas, los clientes sin mesa y podrás tomar órdenes."
-          />
-        ),
-      },
-      {
-        path: 'barra',
-        element: (
-          <PosPlaceholderPage
-            title="Barra"
-            phase={3}
-            description="Comandas pendientes, en preparación y entregadas."
-          />
-        ),
-      },
+      { index: true, element: <FloorPage /> },
+      { path: 'barra', element: <BarPage /> },
+      { path: 'cuentas/:tabId', element: <TabPage />, handle: { hideNav: true } },
+      { path: 'cuentas/:tabId/orden', element: <OrderPage />, handle: { hideNav: true } },
       {
         path: 'caja',
         element: (
