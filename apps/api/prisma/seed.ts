@@ -1,12 +1,13 @@
 /**
  * Datos de prueba de SanfeFer. Borra TODO y vuelve a cargar:
- * usuarios, mesas, proveedores, inventario con stock inicial, menú con recetas y extras.
+ * usuarios, mesas, proveedores, inventario, menú con recetas y extras, y un historial de
+ * ventas, cajas, compras y mermas de las últimas semanas (ver seed-history.ts).
  *
  *   npm run db:seed        (o npm run db:reset para recrear la base desde cero)
  */
 import { MeasureUnit, Prisma, PrismaClient, type InventoryItemKind } from '@prisma/client';
-import { getBusinessDate } from '@sanfefer/shared';
 import bcrypt from 'bcryptjs';
+import { seedHistory, type SamplePurchase } from './seed-history';
 
 const prisma = new PrismaClient();
 const D = (v: number | string) => new Prisma.Decimal(v);
@@ -225,12 +226,8 @@ const modifierGroups: {
 ];
 
 // Compras de ejemplo: [artículo, cantidad, total de la línea]. Su costo coincide con el de inventoryRows.
-const seedPurchases: {
-  supplier: string;
-  daysAgo: number;
-  invoice: string | null;
-  lines: [string, number, number][];
-}[] = [
+// Además, el historial agrega una compra semanal por proveedor.
+const seedPurchases: SamplePurchase[] = [
   {
     supplier: 'Cervecería Centro Americana',
     daysAgo: 3,
@@ -253,11 +250,8 @@ const seedPurchases: {
   },
 ];
 
-/** Instante a las 10:00 de Guatemala de hace N días, y su fecha de negocio. */
-function daysAgo(n: number) {
-  const date = getBusinessDate(new Date(Date.now() - n * 86400000));
-  return { date, at: new Date(`${date}T16:00:00.000Z`) };
-}
+/** Días de historial de ventas (terminan ayer; hoy queda libre para probar). */
+const HISTORY_DAYS = 56;
 
 async function wipe() {
   // Orden inverso a las dependencias.
@@ -344,35 +338,15 @@ async function main() {
     ],
   });
 
-  // ── Inventario con stock inicial (deja su movimiento en el historial) ──
-  // Parte del stock llega por las compras de ejemplo; el resto es el stock inicial de hace una semana.
-  const purchased = new Map<string, number>();
-  for (const p of seedPurchases)
-    for (const [name, qty] of p.lines) purchased.set(name, (purchased.get(name) ?? 0) + qty);
+  // ── Inventario ──
+  // El stock de la lista es el final; sus movimientos (stock inicial, compras, ventas y mermas)
+  // los genera el historial para que cuadren.
   const itemIds = new Map<string, number>();
-  const runningStock = new Map<string, number>();
   for (const [name, kind, unit, stock, minStock, cost] of inventoryRows) {
     const item = await prisma.inventoryItem.create({
       data: { name, kind, unit, stock: D(stock), minStock: D(minStock), averageCost: D(cost) },
     });
     itemIds.set(name, item.id);
-    const initial = stock - (purchased.get(name) ?? 0);
-    if (initial < 0) throw new Error(`El seed compra más ${name} de lo que hay en stock`);
-    runningStock.set(name, initial);
-    if (initial > 0) {
-      await prisma.inventoryMovement.create({
-        data: {
-          inventoryItemId: item.id,
-          type: 'INITIAL',
-          quantity: D(initial),
-          unitCost: D(cost),
-          stockAfter: D(initial),
-          reason: 'Stock inicial',
-          userId: admin.id,
-          createdAt: daysAgo(7).at,
-        },
-      });
-    }
   }
   const itemId = (name: string) => {
     const id = itemIds.get(name);
@@ -384,49 +358,6 @@ async function main() {
       inventoryItemId: itemId(name),
       quantity: D(quantity),
     }));
-
-  // ── Compras de ejemplo ──
-  for (const p of seedPurchases) {
-    const supplier = await prisma.supplier.findUniqueOrThrow({ where: { name: p.supplier } });
-    const { date, at } = daysAgo(p.daysAgo);
-    const purchase = await prisma.purchase.create({
-      data: {
-        supplierId: supplier.id,
-        purchasedAt: new Date(`${date}T00:00:00.000Z`),
-        invoiceNumber: p.invoice,
-        total: D(p.lines.reduce((sum, [, , total]) => sum + total, 0)),
-        createdById: admin.id,
-        createdAt: at,
-      },
-    });
-    for (const [name, qty, total] of p.lines) {
-      const unitCost = new Prisma.Decimal(total).div(qty).toDecimalPlaces(4);
-      const line = await prisma.purchaseItem.create({
-        data: {
-          purchaseId: purchase.id,
-          inventoryItemId: itemIds.get(name)!,
-          quantity: D(qty),
-          unitCost,
-          subtotal: D(total),
-        },
-      });
-      const after = runningStock.get(name)! + qty;
-      runningStock.set(name, after);
-      await prisma.inventoryMovement.create({
-        data: {
-          inventoryItemId: itemIds.get(name)!,
-          type: 'PURCHASE',
-          quantity: D(qty),
-          unitCost,
-          stockAfter: D(after),
-          reason: `Compra #${purchase.id} · ${p.supplier}${p.invoice ? ` · factura ${p.invoice}` : ''}`,
-          userId: admin.id,
-          purchaseItemId: line.id,
-          createdAt: at,
-        },
-      });
-    }
-  }
 
   // ── Grupos de extras ──
   const groupIds = new Map<string, number>();
@@ -475,10 +406,21 @@ async function main() {
     }
   }
 
+  // ── Historial de ventas, cajas, compras y mermas ──
+  const history = await seedHistory(prisma, {
+    days: HISTORY_DAYS,
+    adminId: admin.id,
+    adminName: admin.name,
+    samplePurchases: seedPurchases,
+  });
+
   const productCount = menu.reduce((n, c) => n + c.products.length, 0);
   console.log('✅ Datos de prueba cargados');
   console.log(
-    `   ${seedPurchases.length} compras · ${sellers.length + 1} usuarios · ${tables.length} mesas · ${inventoryRows.length} artículos · ${productCount} productos`,
+    `   ${sellers.length + 1} usuarios · ${tables.length} mesas · ${inventoryRows.length} artículos · ${productCount} productos`,
+  );
+  console.log(
+    `   Historial de ${history.days} días: ${history.tabs} cuentas cobradas · ${history.purchases} compras · ${history.movements} movimientos de inventario`,
   );
   console.log('   Admin:      usuario "admin", contraseña "Sanfefer2026" (PIN 9999)');
   console.log('   Vendedores: luis/1234 · ana/2345 · marta/3456 · carlos/4567');

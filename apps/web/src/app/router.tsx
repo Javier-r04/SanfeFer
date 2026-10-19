@@ -6,7 +6,6 @@ import { PosCashPage } from '@/features/cash/PosCashPage';
 import { CatalogPage } from '@/features/catalog/CatalogPage';
 import { GuestOnly, RequireAuth, RootRedirect } from '@/features/auth/guards';
 import { PinLoginPage } from '@/features/auth/PinLoginPage';
-import { ComingSoon } from '@/features/common/ComingSoon';
 import { NotFoundPage } from '@/features/common/NotFoundPage';
 import { InventoryPage } from '@/features/inventory/InventoryPage';
 import { NewPurchasePage } from '@/features/purchases/NewPurchasePage';
@@ -15,6 +14,7 @@ import { BarPage } from '@/features/pos/BarPage';
 import { FloorPage } from '@/features/pos/FloorPage';
 import { OrderPage } from '@/features/pos/OrderPage';
 import { PaymentPage } from '@/features/pos/PaymentPage';
+import { ReportsPage } from '@/features/reports/ReportsPage';
 import { TabPage } from '@/features/pos/TabPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { UsersPage } from '@/features/users/UsersPage';
@@ -70,16 +70,7 @@ export const router = createBrowserRouter([
       { path: 'compras', element: <PurchasesPage /> },
       { path: 'compras/nueva', element: <NewPurchasePage /> },
       { path: 'caja', element: <AdminCashPage /> },
-      {
-        path: 'reportes',
-        element: (
-          <ComingSoon
-            title="Reportes"
-            phase={5}
-            description="Ventas por periodo, productos, vendedores, utilidad y exportación a CSV."
-          />
-        ),
-      },
+      { path: 'reportes', element: <ReportsPage /> },
       { path: 'ajustes', element: <SettingsPage /> },
     ],
   },

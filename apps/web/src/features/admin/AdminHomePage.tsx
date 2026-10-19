@@ -1,4 +1,4 @@
-import { AlertTriangle, Boxes, CupSoda, Truck, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Boxes, CupSoda, Truck, Users, Wallet } from 'lucide-react';
 import { Link } from 'react-router';
 import { PageHeader } from '@/features/common/ComingSoon';
 import { useSession } from '@/features/auth/api';
@@ -38,6 +38,13 @@ const shortcuts = [
     ready: true,
   },
   { to: '/admin/caja', label: 'Caja', text: 'Cierre del día y arqueos', Icon: Wallet, ready: true },
+  {
+    to: '/admin/reportes',
+    label: 'Reportes',
+    text: 'Ventas, utilidad, productos y vendedores; exporta a CSV',
+    Icon: BarChart3,
+    ready: true,
+  },
 ];
 
 export function AdminHomePage() {
@@ -50,7 +57,7 @@ export function AdminHomePage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title={`Hola, ${user?.name.split(' ')[0] ?? ''}`}
-        subtitle="Resumen de hoy. Los reportes por periodo llegan en la Fase 5."
+        subtitle="Resumen de hoy. Para otros periodos, abre Reportes."
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Vendido hoy" value={daily.data ? formatMoney(daily.data.total) : '—'} />

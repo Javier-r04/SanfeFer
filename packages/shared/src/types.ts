@@ -6,6 +6,7 @@ import type {
   Role,
   StockStatus,
 } from './constants';
+import type { ReportGroupBy } from './report-periods';
 
 /** Usuario autenticado tal como lo devuelve /auth/me. */
 export interface AuthUser {
@@ -402,4 +403,143 @@ export interface DailyCloseDto {
   topProducts: { name: string; quantity: number; total: number }[];
   sessions: CashSessionDto[];
   openTabs: number;
+}
+
+// ───────────── Reportes ─────────────
+
+/** Totales de ventas de un rango. Ventas netas = subtotal − descuentos; el servicio va aparte. */
+export interface SalesTotalsDto {
+  tabs: number;
+  units: number;
+  subtotal: number;
+  discounts: number;
+  serviceCharges: number;
+  total: number;
+  netSales: number;
+  /** Costo de lo vendido (receta + extras al enviar a barra). */
+  cost: number;
+  grossProfit: number;
+  /** Utilidad bruta / ventas netas; null si no hubo ventas. */
+  margin: number | null;
+  averageTicket: number;
+}
+
+export interface SalesPeriodDto {
+  /** Fecha que identifica el periodo: el día, el lunes de la semana o el día 1 del mes. */
+  period: string;
+  tabs: number;
+  total: number;
+  netSales: number;
+  cost: number;
+  grossProfit: number;
+}
+
+export interface SalesReportDto {
+  from: string;
+  to: string;
+  groupBy: ReportGroupBy;
+  totals: SalesTotalsDto & {
+    cash: number;
+    card: number;
+    /** Costo de las mermas registradas en el rango. */
+    wasteCost: number;
+    profitAfterWaste: number;
+    cancelled: { units: number; amount: number };
+  };
+  previous: { from: string; to: string } & Pick<
+    SalesTotalsDto,
+    'tabs' | 'total' | 'grossProfit' | 'averageTicket'
+  >;
+  series: SalesPeriodDto[];
+  /** 24 horas (hora de Guatemala del cobro). */
+  byHour: { hour: number; tabs: number; total: number }[];
+  /** 1 = lunes … 7 = domingo. */
+  byWeekday: { weekday: number; tabs: number; total: number }[];
+}
+
+export interface ProductReportRowDto {
+  productId: number;
+  name: string;
+  category: string;
+  active: boolean;
+  units: number;
+  /** Ventas a precio de carta (sin repartir los descuentos de cuenta). */
+  sales: number;
+  cost: number;
+  profit: number;
+  margin: number | null;
+}
+
+export interface ProductsReportDto {
+  from: string;
+  to: string;
+  products: ProductReportRowDto[];
+  categories: { name: string; units: number; sales: number; cost: number; profit: number }[];
+}
+
+export interface SellerReportRowDto {
+  id: number;
+  name: string;
+  role: Role;
+  active: boolean;
+  tabs: number;
+  units: number;
+  total: number;
+  averageTicket: number;
+  discounts: number;
+  cancelled: { units: number; amount: number };
+}
+
+export interface SellersReportDto {
+  from: string;
+  to: string;
+  sellers: SellerReportRowDto[];
+}
+
+export interface InventoryReportRowDto {
+  id: number;
+  name: string;
+  kind: InventoryItemKind;
+  unit: MeasureUnit;
+  active: boolean;
+  stock: number;
+  minStock: number;
+  averageCost: number;
+  /** stock × costo promedio */
+  value: number;
+  status: StockStatus;
+  /** Movimientos del rango, en unidades del insumo. */
+  purchased: number;
+  sold: number;
+  wasted: number;
+  wasteCost: number;
+  /** Ajustes por conteo y entradas manuales (neto). */
+  adjusted: number;
+}
+
+export interface InventoryReportDto {
+  from: string;
+  to: string;
+  totalValue: number;
+  lowCount: number;
+  outCount: number;
+  wasteCost: number;
+  items: InventoryReportRowDto[];
+}
+
+/** Una cuenta cobrada, para el detalle exportable. */
+export interface TabReportRowDto {
+  id: number;
+  businessDate: string;
+  closedAt: string;
+  table: string | null;
+  customerName: string;
+  seller: string;
+  units: number;
+  subtotal: number;
+  discount: number;
+  serviceCharge: number;
+  total: number;
+  cash: number;
+  card: number;
 }

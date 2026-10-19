@@ -13,6 +13,7 @@ import { inventoryRouter } from './modules/inventory/inventory.routes';
 import { posRouter } from './modules/pos/pos.routes';
 import { purchasesRouter } from './modules/purchases/purchases.routes';
 import { settingsRouter } from './modules/settings/settings.routes';
+import { reportsRouter } from './modules/reports/reports.routes';
 import { usersRouter } from './modules/users/users.routes';
 
 export function createApp() {
@@ -52,6 +53,7 @@ export function createApp() {
   api.use('/pos', posRouter);
   api.use('/cash', cashRouter);
   api.use('/settings', settingsRouter);
+  api.use('/reports', reportsRouter);
 
   app.use('/api', api);
   app.use(notFoundHandler);

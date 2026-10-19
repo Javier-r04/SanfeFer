@@ -14,7 +14,7 @@ Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas�
 | 2    | Compras                                                  | ✅     |
 | 3    | POS: mesas, órdenes y barra                              | ✅     |
 | 4    | Cobro, ticket y caja                                     | ✅     |
-| 5    | Reportes y CSV                                           | ⏳     |
+| 5    | Reportes y CSV                                           | ✅     |
 | 6    | PWA y despliegue (Vercel + Render + Supabase)            | ⏳     |
 
 ## Requisitos
@@ -34,7 +34,7 @@ cp apps/api/.env.example apps/api/.env
 
 # 3. Tablas y datos de prueba
 npm run db:migrate                 # aplica las migraciones
-npm run db:seed                    # carga usuarios, mesas, inventario y menú de prueba
+npm run db:seed                    # carga usuarios, mesas, inventario, menú y 8 semanas de ventas
 
 # 4. Levantar API (puerto 4000) y web (puerto 5173)
 npm run dev
@@ -55,6 +55,8 @@ Abre http://localhost:5173. Para probar desde el celular en la misma red Wi-Fi, 
 | `carlos`           | Vendedor      | PIN `4567`                             |
 
 `npm run db:seed` borra todo y vuelve a cargar estos datos. Cámbialos antes de usar el sistema de verdad.
+
+El seed también genera un **historial de 8 semanas** (hasta ayer): unas 740 cuentas cobradas, cajas cerradas con su arqueo, compras semanales, mermas y algunas cancelaciones. Hoy queda libre para tus pruebas. Siempre salen los mismos números, y el inventario cuadra: cada venta deja su movimiento, y el stock final es el de la lista del seed, con las alertas de stock bajo y agotado.
 
 ## Scripts
 
@@ -95,3 +97,9 @@ docs/           Plan técnico
 - **Dividir cuenta**: los productos (o parte de una línea) se mueven a otra cuenta de la mesa o a una nueva "Cliente N"; también se puede cobrar en partes iguales (÷N).
 - **Ticket**: comprobante interno, **no es factura**. Un mismo documento se dibuja como vista previa/impresión del navegador (58 u 80 mm) y como comandos **ESC/POS** para impresoras térmicas (USB/serie vía Web Serial en Chrome/Edge, o descarga `.bin`).
 - **Caja**: solo una caja abierta a la vez (índice único parcial en la base de datos). Debe haber = fondo + ventas en efectivo + entradas − salidas; al cerrar se registra lo contado y la diferencia. El cierre del día cuenta los cobros por **fecha de cobro** en la jornada de Guatemala.
+- **Reportes** (solo admin): usan el mismo criterio que el cierre del día. Cuentan las cuentas cobradas por **fecha de cobro** (jornada de Guatemala), sin los productos cancelados.
+  - **Ventas netas** = subtotal − descuentos.
+  - **Utilidad bruta** = ventas netas − costo de lo vendido. El costo es el de la receta y los extras al costo promedio del momento en que se envió a barra.
+  - El cargo por servicio se muestra aparte y no cuenta como utilidad. Las mermas se restan al final.
+  - Cada periodo se compara con el anterior del mismo largo. Las semanas empiezan en lunes. El rango máximo es de dos años.
+- **CSV**: se genera en el navegador. Usa coma como separador, punto decimal, UTF-8 con BOM (Excel muestra bien los acentos) y fechas `AAAA-MM-DD`. Los textos que empiezan con `=`, `+`, `-` o `@` se neutralizan para que Excel no los ejecute como fórmulas.

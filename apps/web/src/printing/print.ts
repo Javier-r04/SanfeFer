@@ -5,6 +5,7 @@ import {
   type TicketDocument,
   type TicketLine,
 } from '@sanfefer/shared';
+import { downloadBlob } from '@/lib/download';
 
 const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -89,9 +90,8 @@ export async function printSerial(doc: TicketDocument, paperWidth: 58 | 80, baud
 
 /** Descarga los bytes ESC/POS (útil para probar con utilidades de la impresora). */
 export function downloadEscPos(doc: TicketDocument, paperWidth: 58 | 80, name: string) {
-  const blob = new Blob([escPosBytes(doc, paperWidth)], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement('a'), { href: url, download: `${name}.bin` });
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(
+    new Blob([escPosBytes(doc, paperWidth)], { type: 'application/octet-stream' }),
+    `${name}.bin`,
+  );
 }
