@@ -1,17 +1,29 @@
 import type { OrderItemDto } from '@sanfefer/shared';
-import { MoreHorizontal, Plus, ShoppingBag } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  MoreHorizontal,
+  Percent,
+  Plus,
+  ReceiptText,
+  ShoppingBag,
+  Split,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { useSettings } from '@/features/settings/api';
 import { formatMoney, formatTime } from '@/lib/format';
+import { TicketModal } from '@/printing/TicketModal';
 import { toast } from '@/stores/toast';
-import { useOpenTab, useTab } from './api';
+import { useCloseZeroTab, useOpenTab, useSetCharges, useTab } from './api';
 import { cartTotals, useTabCart } from './cart';
 import { ItemStatusBadge, PosHeader } from './components';
+import { DiscountModal } from './DiscountModal';
 import { ItemActionsModal } from './ItemActionsModal';
+import { MoveItemsModal } from './MoveItemsModal';
 import { timeAgo, useNow } from './pos-utils';
 import { TabOptionsModal } from './TabOptionsModal';
 
@@ -24,6 +36,12 @@ export function TabPage() {
   const now = useNow();
   const [selected, setSelected] = useState<OrderItemDto | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [moveMode, setMoveMode] = useState<'move' | 'split' | null>(null);
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [ticketOpen, setTicketOpen] = useState(false);
+  const settings = useSettings();
+  const setCharges = useSetCharges();
+  const closeZero = useCloseZeroTab();
 
   if (tab.isPending) return <LoadingState label="Cargando cuenta…" />;
   if (tab.error) {
@@ -35,8 +53,21 @@ export function TabPage() {
     );
   }
   const t = tab.data;
+  const b = t.billing;
   const open = t.status === 'OPEN';
   const draftTotals = cartTotals(draft);
+  const hasItems = t.itemCount > 0;
+
+  const toggleService = () =>
+    setCharges.mutate(
+      {
+        tabId: t.id,
+        input: {
+          serviceChargeRate: b.serviceChargeRate ? null : (settings.data?.serviceChargeRate ?? 10),
+        },
+      },
+      { onError: (e) => toast.error(errorMessage(e)) },
+    );
 
   const addCustomer = () =>
     openTab.mutate(
@@ -55,20 +86,33 @@ export function TabPage() {
         backTo="/pos"
         backLabel="Volver a mesas"
         actions={
-          open ? (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setOptionsOpen(true)}
-              aria-label="Opciones de la cuenta"
-            >
-              <MoreHorizontal aria-hidden="true" className="size-5" />
-            </Button>
-          ) : null
+          <>
+            {hasItems ? (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setTicketOpen(true)}
+                aria-label={open ? 'Ver pre-cuenta' : 'Ver comprobante'}
+                title={open ? 'Pre-cuenta' : 'Comprobante'}
+              >
+                <ReceiptText aria-hidden="true" className="size-5" />
+              </Button>
+            ) : null}
+            {open ? (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setOptionsOpen(true)}
+                aria-label="Opciones de la cuenta"
+              >
+                <MoreHorizontal aria-hidden="true" className="size-5" />
+              </Button>
+            ) : null}
+          </>
         }
       />
 
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 pt-3 pb-44 sm:px-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 pt-3 pb-60 sm:px-4">
         {t.table && open ? (
           <nav
             aria-label="Cuentas de la mesa"
@@ -113,7 +157,8 @@ export function TabPage() {
 
         {!open ? (
           <p className="rounded-xl bg-surface-2 px-3 py-2.5 text-sm font-semibold">
-            Esta cuenta está {t.status === 'PAID' ? 'cobrada' : 'cancelada'}.
+            Esta cuenta está {t.status === 'PAID' ? 'cobrada' : 'cancelada'}
+            {t.closedBy ? ` (${t.closedBy.name.split(' ')[0]})` : ''}.
           </p>
         ) : null}
 
@@ -128,6 +173,54 @@ export function TabPage() {
             </span>
             <span className="text-sm font-extrabold underline underline-offset-4">Continuar</span>
           </Link>
+        ) : null}
+
+        {open && hasItems ? (
+          <div className="grid grid-cols-4 gap-2" role="group" aria-label="Acciones de la cuenta">
+            {[
+              {
+                label: 'Mover',
+                Icon: ArrowLeftRight,
+                onClick: () => setMoveMode('move'),
+                on: false,
+              },
+              { label: 'Dividir', Icon: Split, onClick: () => setMoveMode('split'), on: false },
+              {
+                label: 'Descuento',
+                Icon: Percent,
+                onClick: () => setDiscountOpen(true),
+                on: !!b.discount,
+              },
+              {
+                label: `Servicio ${b.serviceChargeRate ?? settings.data?.serviceChargeRate ?? 10}%`,
+                Icon: null,
+                onClick: toggleService,
+                on: !!b.serviceChargeRate,
+              },
+            ].map(({ label, Icon, onClick, on }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={onClick}
+                aria-pressed={
+                  label.startsWith('Servicio') || label === 'Descuento' ? on : undefined
+                }
+                className={cn(
+                  'flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border text-xs font-bold',
+                  on
+                    ? 'border-primary bg-primary-soft text-primary-ink'
+                    : 'border-border bg-surface',
+                )}
+              >
+                {Icon ? (
+                  <Icon aria-hidden="true" className="size-5" />
+                ) : (
+                  <span className="text-[15px] font-extrabold">%</span>
+                )}
+                {label}
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {t.orders.length === 0 ? (
@@ -197,12 +290,38 @@ export function TabPage() {
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-3xl flex-col gap-2">
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted">
-              Subtotal · {t.itemCount} producto{t.itemCount === 1 ? '' : 's'}
-            </span>
-            <span className="tabular text-2xl font-extrabold">{formatMoney(t.subtotal)}</span>
-          </div>
+          <dl className="flex flex-col gap-0.5 text-sm">
+            <div className="flex justify-between text-muted">
+              <dt>
+                Subtotal · {t.itemCount} producto{t.itemCount === 1 ? '' : 's'}
+              </dt>
+              <dd className="tabular">{formatMoney(b.subtotal)}</dd>
+            </div>
+            {b.discountTotal > 0 ? (
+              <div className="flex justify-between text-muted">
+                <dt>Descuento{b.discount?.type === 'PERCENT' ? ` (${b.discount.value}%)` : ''}</dt>
+                <dd className="tabular">−{formatMoney(b.discountTotal)}</dd>
+              </div>
+            ) : null}
+            {b.serviceCharge > 0 ? (
+              <div className="flex justify-between text-muted">
+                <dt>Servicio ({b.serviceChargeRate}%)</dt>
+                <dd className="tabular">{formatMoney(b.serviceCharge)}</dd>
+              </div>
+            ) : null}
+            {b.paid > 0 && open ? (
+              <div className="flex justify-between font-semibold text-primary-ink">
+                <dt>Pagado</dt>
+                <dd className="tabular">{formatMoney(b.paid)}</dd>
+              </div>
+            ) : null}
+            <div className="flex items-baseline justify-between">
+              <dt className="text-base font-extrabold">{b.paid > 0 && open ? 'Falta' : 'Total'}</dt>
+              <dd className="tabular text-2xl font-extrabold">
+                {formatMoney(b.paid > 0 && open ? b.remaining : b.total)}
+              </dd>
+            </div>
+          </dl>
           <div className="flex gap-2.5">
             <Link
               to={`/pos/cuentas/${t.id}/orden`}
@@ -218,14 +337,51 @@ export function TabPage() {
               <Plus aria-hidden="true" className="size-5" strokeWidth={2.6} />
               Agregar
             </Link>
-            <Button size="xl" className="flex-[1.4]" disabled title="El cobro llega en la Fase 4">
-              Cobrar
-            </Button>
+            {open && hasItems && b.remaining === 0 ? (
+              <Button
+                size="xl"
+                className="flex-[1.4]"
+                loading={closeZero.isPending}
+                onClick={() =>
+                  closeZero.mutate(t.id, {
+                    onSuccess: () => toast.success('Cuenta cerrada sin cobro.'),
+                    onError: (e) => toast.error(errorMessage(e)),
+                  })
+                }
+              >
+                Cerrar sin cobro
+              </Button>
+            ) : open ? (
+              <Link
+                to={`/pos/cuentas/${t.id}/cobro`}
+                aria-disabled={!hasItems}
+                className={cn(
+                  'tabular flex h-14 flex-[1.4] items-center justify-center rounded-2xl bg-primary text-[17px] font-extrabold text-on-primary',
+                  !hasItems && 'pointer-events-none opacity-50',
+                )}
+              >
+                Cobrar {hasItems ? formatMoney(b.remaining) : ''}
+              </Link>
+            ) : (
+              <Button
+                size="xl"
+                variant="secondary"
+                className="flex-[1.4]"
+                onClick={() => setTicketOpen(true)}
+              >
+                Ver comprobante
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       <ItemActionsModal item={selected} onClose={() => setSelected(null)} />
+      {open ? <MoveItemsModal tab={t} mode={moveMode} onClose={() => setMoveMode(null)} /> : null}
+      {open ? (
+        <DiscountModal tab={t} open={discountOpen} onClose={() => setDiscountOpen(false)} />
+      ) : null}
+      <TicketModal tabId={ticketOpen ? t.id : null} onClose={() => setTicketOpen(false)} />
       {open ? (
         <TabOptionsModal tab={t} open={optionsOpen} onClose={() => setOptionsOpen(false)} />
       ) : null}

@@ -1,8 +1,11 @@
-import { AlertTriangle, Boxes, CupSoda, Truck, Users } from 'lucide-react';
+import { AlertTriangle, Boxes, CupSoda, Truck, Users, Wallet } from 'lucide-react';
 import { Link } from 'react-router';
 import { PageHeader } from '@/features/common/ComingSoon';
 import { useSession } from '@/features/auth/api';
+import { StatCard } from '@/components/ui/States';
+import { useDaily } from '@/features/cash/api';
 import { useInventorySummary } from '@/features/inventory/api';
+import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
 const shortcuts = [
@@ -34,19 +37,32 @@ const shortcuts = [
     Icon: Truck,
     ready: true,
   },
+  { to: '/admin/caja', label: 'Caja', text: 'Cierre del día y arqueos', Icon: Wallet, ready: true },
 ];
 
 export function AdminHomePage() {
   const { data: user } = useSession();
   const summary = useInventorySummary();
+  const daily = useDaily();
   const low = summary.data?.lowCount ?? 0;
   const out = summary.data?.outCount ?? 0;
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title={`Hola, ${user?.name.split(' ')[0] ?? ''}`}
-        subtitle="El resumen de ventas llegará en la Fase 5."
+        subtitle="Resumen de hoy. Los reportes por periodo llegan en la Fase 5."
       />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Vendido hoy" value={daily.data ? formatMoney(daily.data.total) : '—'} />
+        <StatCard label="Cuentas cobradas" value={daily.data?.tabsPaid ?? '—'} />
+        <StatCard
+          label="Efectivo · tarjeta"
+          value={
+            daily.data ? `${formatMoney(daily.data.cash)} · ${formatMoney(daily.data.card)}` : '—'
+          }
+        />
+        <StatCard label="Cuentas abiertas" value={daily.data?.openTabs ?? '—'} />
+      </div>
       {low + out > 0 ? (
         <Link
           to="/admin/inventario?alert=1"

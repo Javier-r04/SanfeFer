@@ -2,6 +2,9 @@ import {
   advanceOrderSchema,
   cancelItemSchema,
   cancelTabSchema,
+  moveItemsSchema,
+  paymentSchema,
+  tabChargesSchema,
   itemStatusSchema,
   openTabSchema,
   sendOrderSchema,
@@ -26,5 +29,11 @@ posRouter.post('/tabs/:id/cancel', validateBody(cancelTabSchema), c.cancelTab);
 posRouter.post('/tabs/:id/orders', validateBody(sendOrderSchema), c.sendOrder);
 posRouter.patch('/items/:id/status', validateBody(itemStatusSchema), c.setItemStatus);
 posRouter.post('/items/:id/cancel', validateBody(cancelItemSchema), c.cancelItem);
+posRouter.patch('/tabs/:id/charges', validateBody(tabChargesSchema), c.setCharges);
+posRouter.post('/tabs/:id/payments', validateBody(paymentSchema), c.addPayment);
+posRouter.post('/tabs/:id/close', c.closeZeroTab);
+posRouter.get('/tabs/:id/ticket', c.getTicket);
+posRouter.delete('/payments/:id', c.deletePayment);
+posRouter.post('/items/move', validateBody(moveItemsSchema), c.moveItems);
 posRouter.get('/bar', c.getBar);
 posRouter.post('/orders/:id/advance', validateBody(advanceOrderSchema), c.advanceOrder);

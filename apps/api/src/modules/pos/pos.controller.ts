@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { parseId } from '../../lib/query';
 import { currentUser } from '../../middleware/auth';
+import * as billing from './billing.service';
 import * as items from './items.service';
 import * as menu from './menu.service';
 import * as tabs from './tabs.service';
@@ -39,4 +40,23 @@ export async function getBar(_req: Request, res: Response) {
 }
 export async function advanceOrder(req: Request, res: Response) {
   res.json(await items.advanceOrder(parseId(req), req.body.to));
+}
+
+export async function setCharges(req: Request, res: Response) {
+  res.json({ tab: await billing.setCharges(parseId(req), req.body, currentUser(req)) });
+}
+export async function addPayment(req: Request, res: Response) {
+  res.status(201).json(await billing.addPayment(parseId(req), req.body, currentUser(req)));
+}
+export async function deletePayment(req: Request, res: Response) {
+  res.json({ tab: await billing.deletePayment(parseId(req)) });
+}
+export async function closeZeroTab(req: Request, res: Response) {
+  res.json({ tab: await billing.closeZeroTab(parseId(req), currentUser(req)) });
+}
+export async function moveItems(req: Request, res: Response) {
+  res.json(await billing.moveItems(req.body, currentUser(req)));
+}
+export async function getTicket(req: Request, res: Response) {
+  res.json(await billing.getTicket(parseId(req)));
 }

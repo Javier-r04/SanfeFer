@@ -1,10 +1,17 @@
 import { Prisma, type OrderItemStatus } from '@prisma/client';
+import { computeTabTotals, fromCents, toCents } from '@sanfefer/shared';
 import type { AuthUser, BarDto, CancelItemInput } from '@sanfefer/shared';
-import { AppError, badRequest, conflict, notFound } from '../../lib/errors';
-import { verifySecret } from '../../lib/hash';
+import { resolveAuthorizer } from '../../lib/authorization';
+import { badRequest, conflict, notFound } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
 import { applyStockChange, lockInventoryItems } from '../inventory/stock';
-import { itemInclude, toOrderItemDto } from './pos.mapper';
+import {
+  computeBilling,
+  itemInclude,
+  lineTotal,
+  paymentInclude,
+  toOrderItemDto,
+} from './pos.mapper';
 
 const D = (v: number | string) => new Prisma.Decimal(v);
 const RECENT_DELIVERED_MS = 15 * 60 * 1000;
@@ -78,28 +85,6 @@ export async function getBar(): Promise<BarDto> {
   };
 }
 
-/** Admin que autoriza: el propio usuario si es admin, o el dueño del PIN ingresado. */
-async function resolveAuthorizer(user: AuthUser, pin: string | undefined) {
-  if (user.role === 'ADMIN') return user.id;
-  if (!pin) {
-    throw new AppError(
-      403,
-      'AUTHORIZATION_REQUIRED',
-      'Este producto ya se está preparando o se entregó: un administrador debe autorizar con su PIN.',
-      { authorizationPin: 'Pide el PIN a un administrador' },
-    );
-  }
-  const admins = await prisma.user.findMany({
-    where: { role: 'ADMIN', active: true, pinHash: { not: null } },
-  });
-  for (const admin of admins) {
-    if (await verifySecret(pin, admin.pinHash!)) return admin.id;
-  }
-  throw new AppError(403, 'AUTHORIZATION_INVALID', 'PIN de administrador incorrecto.', {
-    authorizationPin: 'PIN incorrecto',
-  });
-}
-
 type Consumption = { inventoryItemId: number; quantity: number }[];
 
 /**
@@ -116,8 +101,36 @@ export async function cancelItem(id: number, input: CancelItemInput, user: AuthU
       quantity: `Máximo ${item.quantity}`,
     });
   }
+  // Si ya se cobró una parte de la cuenta, cancelar no puede dejar el total por debajo de lo pagado.
+  const tabBilling = await prisma.tab.findUniqueOrThrow({
+    where: { id: item.tabId },
+    include: { items: true, payments: { include: paymentInclude } },
+  });
+  const billing = computeBilling(tabBilling);
+  if (billing.paid > 0) {
+    const removed = toCents(lineTotal({ ...item, quantity }));
+    const after = computeTabTotals(
+      fromCents(toCents(billing.subtotal) - removed),
+      billing.discount,
+      billing.serviceChargeRate,
+    );
+    if (toCents(after.total) < toCents(billing.paid)) {
+      throw conflict(
+        'Ya se cobró parte de esta cuenta. Quita el pago antes de cancelar este producto.',
+      );
+    }
+  }
+
   const prepared = item.status !== 'PENDING';
-  const authorizedBy = prepared ? await resolveAuthorizer(user, input.authorizationPin) : null;
+  const authorizedBy = prepared
+    ? (
+        await resolveAuthorizer(
+          user,
+          input.authorizationPin,
+          'Este producto ya se está preparando o se entregó',
+        )
+      ).id
+    : null;
   const consumption = (item.consumption as Consumption | null) ?? [];
 
   await prisma.$transaction(async (tx) => {

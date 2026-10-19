@@ -7,10 +7,12 @@ import { env } from './config/env';
 import { prisma } from './lib/prisma';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRouter } from './modules/auth/auth.routes';
+import { cashRouter } from './modules/cash/cash.routes';
 import { catalogRouter } from './modules/catalog/catalog.routes';
 import { inventoryRouter } from './modules/inventory/inventory.routes';
 import { posRouter } from './modules/pos/pos.routes';
 import { purchasesRouter } from './modules/purchases/purchases.routes';
+import { settingsRouter } from './modules/settings/settings.routes';
 import { usersRouter } from './modules/users/users.routes';
 
 export function createApp() {
@@ -48,6 +50,8 @@ export function createApp() {
   api.use('/inventory', inventoryRouter);
   api.use('/purchases', purchasesRouter);
   api.use('/pos', posRouter);
+  api.use('/cash', cashRouter);
+  api.use('/settings', settingsRouter);
 
   app.use('/api', api);
   app.use(notFoundHandler);

@@ -286,6 +286,9 @@ export interface TabOrderDto {
 
 export interface TabDto extends TabSummaryDto {
   status: 'OPEN' | 'PAID' | 'CANCELLED';
+  billing: TabBillingDto;
+  closedAt: string | null;
+  closedBy: { id: number; name: string } | null;
   table: { id: number; name: string } | null;
   openedBy: { id: number; name: string };
   /** Otras cuentas abiertas en la misma mesa (incluida esta), para cambiar rápido. */
@@ -312,4 +315,91 @@ export interface SendOrderResult {
   orderId: number;
   /** Artículos que quedaron en negativo (se vendió sin existencia registrada). */
   stockWarnings: string[];
+}
+
+// ───────────── Cobro y caja ─────────────
+
+export type PaymentMethod = 'CASH' | 'CARD';
+
+export interface PaymentDto {
+  id: number;
+  method: PaymentMethod;
+  amount: number;
+  tendered: number | null;
+  change: number | null;
+  reference: string | null;
+  receivedBy: { id: number; name: string };
+  createdAt: string;
+}
+
+export interface TabBillingDto {
+  discount: { type: 'PERCENT' | 'AMOUNT'; value: number; reason: string | null } | null;
+  serviceChargeRate: number | null;
+  subtotal: number;
+  discountTotal: number;
+  serviceCharge: number;
+  total: number;
+  paid: number;
+  remaining: number;
+  payments: PaymentDto[];
+}
+
+export interface SettingsDto {
+  businessName: string;
+  address: string | null;
+  phone: string | null;
+  taxId: string | null;
+  ticketFooter: string | null;
+  serviceChargeRate: number;
+  serviceChargeByDefault: boolean;
+  allowNegativeStock: boolean;
+  paperWidth: 58 | 80;
+}
+
+export interface CashMovementDto {
+  id: number;
+  type: 'IN' | 'OUT';
+  amount: number;
+  reason: string;
+  user: { id: number; name: string };
+  createdAt: string;
+}
+
+export interface CashSessionDto {
+  id: number;
+  status: 'OPEN' | 'CLOSED';
+  openingAmount: number;
+  openedBy: { id: number; name: string };
+  openedAt: string;
+  closedBy: { id: number; name: string } | null;
+  closedAt: string | null;
+  cashSales: number;
+  cardSales: number;
+  movementsIn: number;
+  movementsOut: number;
+  /** Fondo + ventas en efectivo + entradas − salidas. */
+  expectedCash: number;
+  countedCash: number | null;
+  difference: number | null;
+  paymentsCount: number;
+  notes: string | null;
+  movements: CashMovementDto[];
+}
+
+export interface DailyCloseDto {
+  date: string;
+  tabsPaid: number;
+  subtotal: number;
+  discounts: number;
+  serviceCharges: number;
+  total: number;
+  cash: number;
+  card: number;
+  averageTicket: number;
+  unitsSold: number;
+  cancelled: { units: number; amount: number };
+  bySeller: { id: number; name: string; tabs: number; total: number }[];
+  topProducts: { name: string; quantity: number; total: number }[];
+  sessions: CashSessionDto[];
+  openTabs: number;
 }

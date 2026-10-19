@@ -1,6 +1,10 @@
 import type {
   BarDto,
   CancelItemInput,
+  MoveItemsInput,
+  PaymentInput,
+  TabChargesInput,
+  TicketDocument,
   FloorDto,
   MenuCategory,
   OpenTabInput,
@@ -116,3 +120,71 @@ export function useAdvanceOrder() {
     onSuccess: invalidate,
   });
 }
+
+// ───────────── Cobro ─────────────
+
+export function useSetCharges() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ tabId, input }: { tabId: number; input: TabChargesInput }) =>
+      api<{ tab: TabDto }>(`/pos/tabs/${tabId}/charges`, { method: 'PATCH', body: input }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Un cobro mueve la caja y el cierre del día además de la cuenta. */
+function useInvalidateWithCash() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidate();
+  return () => Promise.all([invalidate(), qc.invalidateQueries({ queryKey: ['cash'] })]);
+}
+
+export function useAddPayment() {
+  const invalidate = useInvalidateWithCash();
+  return useMutation({
+    mutationFn: ({ tabId, input }: { tabId: number; input: PaymentInput }) =>
+      api<{ tab: TabDto; closed: boolean; change: number; paymentId: number }>(
+        `/pos/tabs/${tabId}/payments`,
+        {
+          method: 'POST',
+          body: input,
+        },
+      ),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeletePayment() {
+  const invalidate = useInvalidateWithCash();
+  return useMutation({
+    mutationFn: (paymentId: number) =>
+      api<{ tab: TabDto }>(`/pos/payments/${paymentId}`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCloseZeroTab() {
+  const invalidate = useInvalidateWithCash();
+  return useMutation({
+    mutationFn: (tabId: number) =>
+      api<{ tab: TabDto }>(`/pos/tabs/${tabId}/close`, { method: 'POST' }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useMoveItems() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: MoveItemsInput) =>
+      api<{ source: TabDto; target: TabDto }>('/pos/items/move', { method: 'POST', body: input }),
+    onSuccess: invalidate,
+  });
+}
+
+export const useTicket = (tabId: number | null) =>
+  useQuery({
+    queryKey: ['pos', 'ticket', tabId],
+    queryFn: () =>
+      api<{ document: TicketDocument; paperWidth: 58 | 80 }>(`/pos/tabs/${tabId}/ticket`),
+    enabled: tabId !== null,
+  });

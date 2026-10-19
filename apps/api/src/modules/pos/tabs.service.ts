@@ -12,6 +12,7 @@ import {
 import { badRequest, conflict, notFound } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
 import { productInclude } from '../catalog/catalog.mapper';
+import { getSettingsRow } from '../settings/settings.service';
 import { applyStockChange, lockInventoryItems } from '../inventory/stock';
 import { tabDetailInclude, tabSummaryInclude, toTabDto, toTabSummary } from './pos.mapper';
 
@@ -77,11 +78,13 @@ async function nextCustomerName(tableId: number) {
 export async function openTab(raw: OpenTabInput, userId: number) {
   const input = openTabSchema.parse(raw);
   if (input.tableId !== null) await assertTable(input.tableId);
+  const settings = await getSettingsRow();
   const tab = await prisma.tab.create({
     data: {
       tableId: input.tableId,
       customerName: input.customerName ?? (await nextCustomerName(input.tableId!)),
       openedById: userId,
+      serviceChargeRate: settings.serviceChargeByDefault ? settings.serviceChargeRate : null,
     },
   });
   return getTab(tab.id);
@@ -191,8 +194,7 @@ export async function sendOrder(tabId: number, raw: SendOrderInput, userId: numb
     return { ...line, product, ...priceLine(product, line.modifierOptionIds, index) };
   });
 
-  const settings = await prisma.setting.findUnique({ where: { id: 1 } });
-  const allowNegative = settings?.allowNegativeStock ?? true;
+  const allowNegative = (await getSettingsRow()).allowNegativeStock;
   const itemIds = [...new Set(lines.flatMap((l) => [...l.consumption.keys()]))];
   const table = tab.tableId
     ? await prisma.diningTable.findUnique({ where: { id: tab.tableId } })

@@ -10,10 +10,10 @@ Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas�
 | Fase | Contenido                                                | Estado |
 | ---- | -------------------------------------------------------- | ------ |
 | 0    | Fundaciones, ingreso con PIN/contraseña, roles, usuarios | ✅     |
-| 1    | Catálogo e inventario                                    | ⏳     |
-| 2    | Compras                                                  | ⏳     |
-| 3    | POS: mesas, órdenes y barra                              | ⏳     |
-| 4    | Cobro, ticket y caja                                     | ⏳     |
+| 1    | Catálogo e inventario                                    | ✅     |
+| 2    | Compras                                                  | ✅     |
+| 3    | POS: mesas, órdenes y barra                              | ✅     |
+| 4    | Cobro, ticket y caja                                     | ✅     |
 | 5    | Reportes y CSV                                           | ⏳     |
 | 6    | PWA y despliegue (Vercel + Render + Supabase)            | ⏳     |
 
@@ -90,3 +90,8 @@ docs/           Plan técnico
 - **Compras**: se registran como en la factura (cantidad y total de la línea); el costo por unidad se deriva. La compra y el aumento de stock van en una sola transacción. Anular devuelve stock y costo promedio, y se rechaza si lo comprado ya se usó.
 - **POS**: el inventario se descuenta al **enviar a barra** (receta + extras). Cancelar un producto pendiente devuelve el inventario; si ya se estaba preparando o se entregó, requiere el PIN de un administrador y se registra como merma. La orden en curso se guarda en el dispositivo hasta enviarla. Mesas, cuentas y barra se refrescan cada 5 s.
 - **Costo y margen del producto**: receta + la opción más barata de cada grupo de extras obligatorio (p. ej. la cerveza de la michelada). La disponibilidad considera también esos extras (Gallo **o** Corona).
+- **Cobro**: total = subtotal − descuento + servicio (el servicio se calcula sobre el subtotal ya con descuento). Los cálculos de dinero se hacen en centavos enteros. Se aceptan pagos parciales y mixtos (efectivo con vuelto y tarjeta con referencia); la cuenta se cierra sola al quedar pagada y sus totales se congelan. Cobrar requiere una caja abierta.
+- **Descuentos**: el vendedor necesita el PIN de un administrador; el motivo queda con quién autorizó. Ni un descuento ni una cancelación pueden dejar el total por debajo de lo ya pagado.
+- **Dividir cuenta**: los productos (o parte de una línea) se mueven a otra cuenta de la mesa o a una nueva "Cliente N"; también se puede cobrar en partes iguales (÷N).
+- **Ticket**: comprobante interno, **no es factura**. Un mismo documento se dibuja como vista previa/impresión del navegador (58 u 80 mm) y como comandos **ESC/POS** para impresoras térmicas (USB/serie vía Web Serial en Chrome/Edge, o descarga `.bin`).
+- **Caja**: solo una caja abierta a la vez (índice único parcial en la base de datos). Debe haber = fondo + ventas en efectivo + entradas − salidas; al cerrar se registra lo contado y la diferencia. El cierre del día cuenta los cobros por **fecha de cobro** en la jornada de Guatemala.
