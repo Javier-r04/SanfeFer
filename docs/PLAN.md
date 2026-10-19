@@ -1,19 +1,20 @@
-# SanfeFer — Propuesta técnica (pendiente de aprobación)
+# SanfeFer — Plan técnico (aprobado)
 
-Modelo de datos completo: [`schema.propuesta.prisma`](./schema.propuesta.prisma) (validado con `prisma validate`).
+Modelo de datos: [`apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma). Diseño de pantallas y paleta: lienzo "SanfeFer — Pantallas y paleta" (aprobado).
 
 ## Stack
 
-| Capa | Elección | Por qué |
-|---|---|---|
-| Monorepo | npm workspaces (`apps/web`, `apps/api`, `packages/shared`) | Un solo repo; Vercel y Render lo soportan sin configuración extra |
-| Validación | **Zod** en `packages/shared` | El mismo esquema valida en el frontend (formularios) y en el backend (requests) |
-| Frontend | React + Vite + TS + Tailwind, React Router, TanStack Query, Zustand, React Hook Form | Query maneja caché y reintentos (útil con la red del celular); Zustand guarda la orden en curso aunque se recargue la página |
-| Backend | Express + TS, Prisma, bcrypt, JWT en cookie httpOnly | — |
-| BD | PostgreSQL 16 en Docker (local) → Supabase (producción) | — |
-| Tests | Vitest + Supertest | Cubrir lo crítico: totales, descuentos, vuelto, descuento de inventario |
+| Capa       | Elección                                                                             | Por qué                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo   | npm workspaces (`apps/web`, `apps/api`, `packages/shared`)                           | Un solo repo; Vercel y Render lo soportan sin configuración extra                                                            |
+| Validación | **Zod** en `packages/shared`                                                         | El mismo esquema valida en el frontend (formularios) y en el backend (requests)                                              |
+| Frontend   | React + Vite + TS + Tailwind, React Router, TanStack Query, Zustand, React Hook Form | Query maneja caché y reintentos (útil con la red del celular); Zustand guarda la orden en curso aunque se recargue la página |
+| Backend    | Express + TS, Prisma, bcrypt, JWT en cookie httpOnly                                 | —                                                                                                                            |
+| BD         | PostgreSQL 16 en Docker (local) → Supabase (producción)                              | —                                                                                                                            |
+| Tests      | Vitest + Supertest                                                                   | Cubrir lo crítico: totales, descuentos, vuelto, descuento de inventario                                                      |
 
 Decisiones relevantes:
+
 - **Dinero en `Decimal`** (nunca `float`) y cálculos con `decimal.js`, para evitar errores de redondeo en totales y costos.
 - **Cookies sin problemas entre dominios**: Vercel reenvía `/api/*` a Render (rewrite), así el navegador ve un solo dominio y la cookie de sesión funciona también en Safari/iPhone.
 - **Estado de barra por polling cada 5 s** (TanStack Query). Es más robusto que WebSockets con el plan gratuito de Render; se puede cambiar a SSE después.
@@ -76,24 +77,24 @@ SanfeFer/
 
 ## Paleta (inspirada en Guatemala, baja saturación)
 
-| Token | Claro | Inspiración | Uso |
-|---|---|---|---|
-| primary | `#4F7F6A` | verde quetzal / jade | acciones principales |
-| secondary | `#5E89AE` | azul celeste de la bandera | navegación, info |
-| accent | `#B0634E` | rojo achiote / pecho del quetzal | peligro, cancelar |
-| warning | `#C9A55A` | maíz amarillo | alertas de stock |
-| highlight | `#8C7FA6` | jacaranda | estados "preparando" |
-| surface | `#F5F1E8` / oscuro `#1E2226` | maíz blanco / piedra volcánica | fondos |
-| earth | `#7A5C48` | barro | bordes, textos secundarios |
+| Token     | Claro                        | Inspiración                      | Uso                        |
+| --------- | ---------------------------- | -------------------------------- | -------------------------- |
+| primary   | `#4F7F6A`                    | verde quetzal / jade             | acciones principales       |
+| secondary | `#5E89AE`                    | azul celeste de la bandera       | navegación, info           |
+| accent    | `#B0634E`                    | rojo achiote / pecho del quetzal | peligro, cancelar          |
+| warning   | `#C9A55A`                    | maíz amarillo                    | alertas de stock           |
+| highlight | `#8C7FA6`                    | jacaranda                        | estados "preparando"       |
+| surface   | `#F5F1E8` / oscuro `#1E2226` | maíz blanco / piedra volcánica   | fondos                     |
+| earth     | `#7A5C48`                    | barro                            | bordes, textos secundarios |
 
 ## Plan por fases
 
-| Fase | Contenido | Cómo se prueba |
-|---|---|---|
-| **0. Fundaciones** | Monorepo, Docker Postgres, migración inicial, seed, Express base (errores en español, validación, health), React base (rutas, layouts, tema claro/oscuro), login (usuario+PIN / usuario+contraseña), roles, CRUD de usuarios | Entrar como admin y como vendedor; el vendedor solo ve el POS |
-| **1. Catálogo e inventario** | Categorías, productos, grupos de modificadores, recetas, activar/desactivar; artículos de inventario, entradas/salidas/ajustes, historial, alertas de stock mínimo | Crear una michelada con extras y receta; ajustar stock y ver el historial |
-| **2. Compras** | Proveedores, registro de compras (transacción: stock + movimiento + costo promedio), anulación | Registrar una compra y verificar stock y costo promedio |
-| **3. POS: toma de orden** | Mapa de mesas, varias cuentas por mesa, clientes independientes, grilla rápida de productos, extras y notas, enviar a barra (descuenta inventario), pantalla de barra con estados, cancelación de ítems | Abrir una mesa con 2 clientes, enviar comandas desde el celular, avanzar estados en barra |
-| **4. Cobro y caja** | Apertura de caja, descuentos, cargo por servicio, mover ítems / dividir cuenta, pagos en efectivo, tarjeta o mixtos con vuelto, ticket imprimible + base ESC/POS, arqueo y cierre, reporte del día | Ciclo completo: abrir caja → vender → cobrar → cerrar y cuadrar |
-| **5. Reportes** | Dashboard, ventas por día/semana/mes, productos más/menos vendidos, ventas por vendedor, utilidad, estado de inventario, exportar CSV | Comparar los reportes con las ventas de prueba; abrir el CSV en Excel |
-| **6. Pulido y despliegue** | PWA, revisión responsive y de accesibilidad, pruebas, Supabase + Render + Vercel, ping para evitar que el servidor se duerma | Usar la URL pública desde el celular |
+| Fase                         | Contenido                                                                                                                                                                                                                    | Cómo se prueba                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **0. Fundaciones**           | Monorepo, Docker Postgres, migración inicial, seed, Express base (errores en español, validación, health), React base (rutas, layouts, tema claro/oscuro), login (usuario+PIN / usuario+contraseña), roles, CRUD de usuarios | Entrar como admin y como vendedor; el vendedor solo ve el POS                             |
+| **1. Catálogo e inventario** | Categorías, productos, grupos de modificadores, recetas, activar/desactivar; artículos de inventario, entradas/salidas/ajustes, historial, alertas de stock mínimo                                                           | Crear una michelada con extras y receta; ajustar stock y ver el historial                 |
+| **2. Compras**               | Proveedores, registro de compras (transacción: stock + movimiento + costo promedio), anulación                                                                                                                               | Registrar una compra y verificar stock y costo promedio                                   |
+| **3. POS: toma de orden**    | Mapa de mesas, varias cuentas por mesa, clientes independientes, grilla rápida de productos, extras y notas, enviar a barra (descuenta inventario), pantalla de barra con estados, cancelación de ítems                      | Abrir una mesa con 2 clientes, enviar comandas desde el celular, avanzar estados en barra |
+| **4. Cobro y caja**          | Apertura de caja, descuentos, cargo por servicio, mover ítems / dividir cuenta, pagos en efectivo, tarjeta o mixtos con vuelto, ticket imprimible + base ESC/POS, arqueo y cierre, reporte del día                           | Ciclo completo: abrir caja → vender → cobrar → cerrar y cuadrar                           |
+| **5. Reportes**              | Dashboard, ventas por día/semana/mes, productos más/menos vendidos, ventas por vendedor, utilidad, estado de inventario, exportar CSV                                                                                        | Comparar los reportes con las ventas de prueba; abrir el CSV en Excel                     |
+| **6. Pulido y despliegue**   | PWA, revisión responsive y de accesibilidad, pruebas, Supabase + Render + Vercel, ping para evitar que el servidor se duerma                                                                                                 | Usar la URL pública desde el celular                                                      |

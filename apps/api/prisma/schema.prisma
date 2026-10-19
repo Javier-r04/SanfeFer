@@ -1,4 +1,4 @@
-// SanfeFer — modelo de datos (propuesta v1)
+// SanfeFer — modelo de datos
 // Dinero: Decimal(10,2) en quetzales (GTQ). Cantidades: Decimal(12,3). Costos unitarios: Decimal(12,4).
 
 generator client {
