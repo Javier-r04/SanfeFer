@@ -1,0 +1,38 @@
+{
+  "name": "sanfefer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SanfeFer — punto de venta, inventario y reportes",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c green,blue \"npm run dev -w @sanfefer/api\" \"npm run dev -w @sanfefer/web\"",
+    "build": "npm run build -w @sanfefer/api && npm run build -w @sanfefer/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w @sanfefer/api",
+    "db:seed": "npm run db:seed -w @sanfefer/api",
+    "db:reset": "npm run db:reset -w @sanfefer/api",
+    "db:studio": "npm run db:studio -w @sanfefer/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.6.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.0"
+  }
+}

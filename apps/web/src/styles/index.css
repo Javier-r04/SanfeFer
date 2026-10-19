@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Paleta SanfeFer: colores de Guatemala con baja saturación. Todos los pares texto/fondo cumplen WCAG AA. */
+:root {
+  color-scheme: light;
+  --bg: #f4f0e6; /* maíz blanco */
+  --surface: #fffdf8;
+  --surface-2: #ece6d8;
+  --border: #ddd4c2;
+  --border-strong: #b9ae97;
+  --text: #23272b; /* piedra volcánica */
+  --muted: #5e5a52;
+
+  --primary: #3f7360; /* quetzal / jade */
+  --primary-ink: #2f5b4b;
+  --primary-soft: #dce8e1;
+  --on-primary: #ffffff;
+
+  --secondary: #46739a; /* cielo */
+  --secondary-ink: #355b7c;
+  --secondary-soft: #dde7f0;
+  --on-secondary: #ffffff;
+
+  --danger: #a8553f; /* achiote */
+  --danger-ink: #8a3f2c;
+  --danger-soft: #f2ded6;
+  --on-danger: #ffffff;
+
+  --warning: #c9a24f; /* maíz */
+  --warning-ink: #6e5418;
+  --warning-soft: #f5eacb;
+  --on-warning: #23272b;
+
+  --highlight: #7d6e9e; /* jacaranda */
+  --highlight-ink: #5c4f7e;
+  --highlight-soft: #e6e1ef;
+  --on-highlight: #ffffff;
+
+  --overlay: rgb(35 39 43 / 0.55);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1a1d20;
+  --surface: #23272b;
+  --surface-2: #2d3236;
+  --border: #3a4045;
+  --border-strong: #565d63;
+  --text: #ece7dc;
+  --muted: #a9a397;
+
+  --primary: #6fa88f;
+  --primary-ink: #a6d2be;
+  --primary-soft: #24372f;
+  --on-primary: #10201a;
+
+  --secondary: #7fa6c8;
+  --secondary-ink: #a9c8e3;
+  --secondary-soft: #22313e;
+  --on-secondary: #10202e;
+
+  --danger: #d08a74;
+  --danger-ink: #e9ae9c;
+  --danger-soft: #3d2722;
+  --on-danger: #2a120b;
+
+  --warning: #d9b969;
+  --warning-ink: #e8ce8c;
+  --warning-soft: #3a3220;
+  --on-warning: #2a2108;
+
+  --highlight: #a898c6;
+  --highlight-ink: #c7bbe0;
+  --highlight-soft: #2f2a3b;
+  --on-highlight: #1c1626;
+
+  --overlay: rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, sans-serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-overlay: var(--overlay);
+
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-secondary: var(--secondary);
+  --color-secondary-ink: var(--secondary-ink);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-on-secondary: var(--on-secondary);
+  --color-danger: var(--danger);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-warning: var(--warning);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-soft: var(--warning-soft);
+  --color-on-warning: var(--on-warning);
+  --color-highlight: var(--highlight);
+  --color-highlight-ink: var(--highlight-ink);
+  --color-highlight-soft: var(--highlight-soft);
+  --color-on-highlight: var(--on-highlight);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+  body {
+    @apply bg-bg font-sans text-text antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Sin flechas en los campos numéricos: en el POS se escribe con el teclado numérico. */
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  :focus-visible {
+    outline: 3px solid var(--secondary);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Animación corta para mensajes de error del PIN */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+@utility animate-shake {
+  animation: shake 0.35s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
