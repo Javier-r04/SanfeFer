@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { Avatar, LogoMark } from '@/components/ui/Brand';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { InstallButton } from '@/pwa/InstallButton';
 import { useLogout, useSession } from '@/features/auth/api';
 import { useInventorySummary } from '@/features/inventory/api';
 import { cn } from '@/lib/cn';
@@ -77,6 +78,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
       <div className="mt-auto flex flex-col gap-3 border-t border-border pt-4">
+        <InstallButton className="-mx-0.5 self-start" />
         <div className="flex items-center justify-between gap-2 px-1">
           <span className="text-sm font-semibold text-muted">Tema</span>
           <ThemeToggle />

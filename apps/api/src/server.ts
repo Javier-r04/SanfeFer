@@ -1,8 +1,16 @@
 import { env } from './config/env';
 import { createApp } from './app';
+import { ensureFirstAdmin } from './lib/bootstrap';
 import { prisma } from './lib/prisma';
 
 const app = createApp();
+
+try {
+  await ensureFirstAdmin();
+} catch (err) {
+  // Sin base de datos la API arranca igual: /api/health lo reporta y Render reintenta.
+  console.error('No se pudo revisar el administrador inicial:', err);
+}
 
 const server = app.listen(env.PORT, () => {
   console.log(`✅ API de SanfeFer escuchando en http://localhost:${env.PORT}/api`);

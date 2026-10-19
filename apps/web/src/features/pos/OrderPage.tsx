@@ -33,13 +33,23 @@ function ProductTile({
       aria-label={`${product.name}, ${formatMoney(product.price)}${inCart ? `, ${inCart} en la orden` : ''}${out ? ', sin existencia' : ''}`}
       className={cn(
         'relative flex h-24 flex-col items-start justify-between rounded-2xl p-3 text-left transition active:scale-[0.98]',
-        inCart ? 'border-2 border-primary bg-primary-soft/50' : 'border border-border bg-surface',
-        out && 'opacity-70',
+        inCart
+          ? 'border-2 border-primary bg-primary-soft/50'
+          : out
+            ? 'border border-dashed border-border-strong bg-surface-2'
+            : 'border border-border bg-surface',
       )}
     >
-      <span className="line-clamp-2 pr-7 text-[15px] leading-tight font-bold">{product.name}</span>
+      {/* Agotado: texto atenuado, pero la etiqueta conserva su contraste (sin opacidad general). */}
+      <span
+        className={cn('line-clamp-2 pr-7 text-[15px] leading-tight font-bold', out && 'text-muted')}
+      >
+        {product.name}
+      </span>
       <span className="flex w-full items-center justify-between gap-1">
-        <span className="tabular text-[15px] font-extrabold">{formatMoney(product.price)}</span>
+        <span className={cn('tabular text-[15px] font-extrabold', out && 'text-muted')}>
+          {formatMoney(product.price)}
+        </span>
         {out ? (
           <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-extrabold text-danger-ink">
             Sin stock

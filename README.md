@@ -3,6 +3,7 @@
 Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas…): POS por mesas y clientes, barra, inventario con recetas, compras, caja y reportes. Interfaz en español; funciona en PC, tablet y celular, con tema claro y oscuro.
 
 - Plan, modelo de datos y fases: [`docs/PLAN.md`](docs/PLAN.md)
+- **Publicar en internet** (Supabase + Render + Vercel), paso a paso: [`docs/DEPLOY.md`](docs/DEPLOY.md)
 - Esquema de base de datos: [`apps/api/prisma/schema.prisma`](apps/api/prisma/schema.prisma)
 
 ## Estado
@@ -15,7 +16,7 @@ Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas�
 | 3    | POS: mesas, órdenes y barra                              | ✅     |
 | 4    | Cobro, ticket y caja                                     | ✅     |
 | 5    | Reportes y CSV                                           | ✅     |
-| 6    | PWA y despliegue (Vercel + Render + Supabase)            | ⏳     |
+| 6    | PWA y despliegue (Vercel + Render + Supabase)            | ✅     |
 
 ## Requisitos
 
@@ -67,6 +68,7 @@ El seed también genera un **historial de 8 semanas** (hasta ayer): unas 740 cue
 | `npm run typecheck`  | Revisión de tipos en todos los paquetes               |
 | `npm run lint`       | ESLint                                                |
 | `npm run build`      | Compila API (`apps/api/dist`) y web (`apps/web/dist`) |
+| `npm run format`     | Formatea con Prettier (la CI revisa el formato)       |
 | `npm run db:migrate` | Crea/aplica migraciones en desarrollo                 |
 | `npm run db:seed`    | Recarga los datos de prueba                           |
 | `npm run db:reset`   | Borra la base, aplica migraciones y corre el seed     |
@@ -78,7 +80,10 @@ El seed también genera un **historial de 8 semanas** (hasta ayer): unas 740 cue
 apps/api        Express + Prisma (módulos en src/modules/*: routes · controller · service)
 apps/web        React + Vite + Tailwind (pantallas en src/features/*)
 packages/shared Validaciones Zod, tipos y utilidades compartidas por API y web
-docs/           Plan técnico
+docs/           Plan técnico y guía de despliegue
+render.yaml     API en Render (Blueprint)
+vercel.json     Web en Vercel; reenvía /api a Render
+.github/        CI (formato, tipos, lint, pruebas, build) y ping opcional a la API
 ```
 
 ## Decisiones técnicas
@@ -103,3 +108,12 @@ docs/           Plan técnico
   - El cargo por servicio se muestra aparte y no cuenta como utilidad. Las mermas se restan al final.
   - Cada periodo se compara con el anterior del mismo largo. Las semanas empiezan en lunes. El rango máximo es de dos años.
 - **CSV**: se genera en el navegador. Usa coma como separador, punto decimal, UTF-8 con BOM (Excel muestra bien los acentos) y fechas `AAAA-MM-DD`. Los textos que empiezan con `=`, `+`, `-` o `@` se neutralizan para que Excel no los ejecute como fórmulas.
+- **PWA**: se instala en Android, iPhone y PC (manifiesto, íconos y _service worker_ con `vite-plugin-pwa`).
+  - El service worker solo guarda la app (HTML, JS, CSS, fuentes); los datos siempre vienen de la API, que responde con `Cache-Control: no-store`.
+  - Sin conexión la app abre y avisa; la orden en curso queda en el dispositivo.
+  - Las versiones nuevas se anuncian con un botón "Actualizar": nunca se recarga sola a mitad de un cobro. Las tablets revisan si hay versión nueva cada hora.
+  - Las pantallas de administración se cargan al entrar a ellas, para que el POS abra rápido en el celular.
+- **Despliegue**: Vercel reenvía `/api` a Render, así que web y API son un solo sitio. La cookie de sesión es propia (funciona en Safari) y no hace falta CORS.
+  - Con dos proxies delante, `TRUST_PROXY=2` permite que el límite de intentos vea la IP real de cada cliente.
+  - La API aplica las migraciones al arrancar.
+  - En el primer arranque crea el administrador con las variables `ADMIN_*` (no se usa el seed en producción).

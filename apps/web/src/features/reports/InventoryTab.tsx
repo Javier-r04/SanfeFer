@@ -72,6 +72,7 @@ export function InventoryTab({ range }: { range: ReportRange }) {
 
       {rows.length ? (
         <DataTable
+          label="Artículos de inventario"
           minWidth={900}
           head={[
             { label: 'Artículo' },

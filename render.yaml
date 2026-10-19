@@ -1,0 +1,41 @@
+# API de SanfeFer en Render (Blueprint). Paso a paso en docs/DEPLOY.md.
+# Render lee este archivo desde "New → Blueprint" y pide los valores marcados con sync: false.
+services:
+  - type: web
+    name: sanfefer-api
+    runtime: node
+    region: virginia # cerca de Supabase "East US (North Virginia)"
+    plan: free
+    branch: main
+    autoDeploy: true
+    # Se instalan también las dependencias de desarrollo: tsup compila y el CLI de Prisma migra.
+    buildCommand: npm ci --include=dev && npm run build -w @sanfefer/api
+    # Aplica las migraciones pendientes y arranca. Al arrancar crea el primer admin si no hay ninguno.
+    startCommand: npm run start:prod -w @sanfefer/api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      # Supabase → Connect → ORMs → Prisma
+      - key: DATABASE_URL # pooler en modo transacción (puerto 6543) con ?pgbouncer=true
+        sync: false
+      - key: DIRECT_URL # pooler en modo sesión (puerto 5432), para las migraciones
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # La web (Vercel) reenvía /api a Render: hay dos proxies delante de la API.
+      - key: TRUST_PROXY
+        value: '2'
+      - key: SESSION_HOURS
+        value: '12'
+      # Primer administrador (solo se usa si todavía no existe ninguno; bórralos después).
+      - key: ADMIN_NAME
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_PIN
+        sync: false

@@ -14,6 +14,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   SESSION_HOURS: z.coerce.number().positive().default(12),
+  /** Proxies delante de la API: 1 = solo Render; 2 = Vercel (reescritura de /api) + Render. */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(1),
   COOKIE_SECURE: z
     .enum(['true', 'false'])
     .optional()

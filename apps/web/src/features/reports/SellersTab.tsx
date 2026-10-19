@@ -41,6 +41,7 @@ export function SellersTab({ range }: { range: ReportRange }) {
         }
       />
       <DataTable
+        label="Ventas por vendedor"
         minWidth={760}
         head={[
           { label: 'Vendedor' },

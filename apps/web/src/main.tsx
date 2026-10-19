@@ -9,12 +9,15 @@ import { RouterProvider } from 'react-router';
 import { router } from './app/router';
 import { Toaster } from './components/ui/Toaster';
 import { queryClient } from './lib/query-client';
+import { AppStatus } from './pwa/AppStatus';
+import './pwa/install';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       <Toaster />
+      <AppStatus />
     </QueryClientProvider>
   </StrictMode>,
 );

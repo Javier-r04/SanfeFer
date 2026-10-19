@@ -19,8 +19,9 @@ import { usersRouter } from './modules/users/users.routes';
 export function createApp() {
   const app = express();
 
-  // Render y Vercel ponen un proxy delante: necesario para la IP real y cookies seguras.
-  app.set('trust proxy', 1);
+  // Render (y Vercel, si reescribe /api) ponen proxies delante: así req.ip es la del cliente
+  // y el límite de intentos de ingreso no mete a todos los usuarios en la misma bolsa.
+  app.set('trust proxy', env.TRUST_PROXY);
   app.disable('x-powered-by');
 
   app.use(helmet());
@@ -29,6 +30,13 @@ export function createApp() {
   app.use(cookieParser());
 
   const api = express.Router();
+
+  // Todo lo de la API es privado y cambia al momento: ni el navegador ni un CDN (Vercel reenvía
+  // /api) deben guardar copias, o una persona podría ver la respuesta de otra.
+  api.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
 
   api.get('/health', async (_req, res) => {
     let db = 'ok';

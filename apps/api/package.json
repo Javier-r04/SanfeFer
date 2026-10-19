@@ -7,6 +7,7 @@
     "dev": "tsx watch --clear-screen=false src/server.ts",
     "build": "prisma generate && tsup",
     "start": "node dist/server.js",
+    "start:prod": "prisma migrate deploy && node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "postinstall": "prisma generate",

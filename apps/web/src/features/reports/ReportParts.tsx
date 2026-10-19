@@ -100,19 +100,29 @@ export function Refreshing({ active, children }: { active: boolean; children: Re
 
 /** Tabla simple con encabezado gris y números alineados a la derecha. */
 export function DataTable({
+  label,
   head,
   children,
   foot,
   minWidth,
 }: {
+  /** Nombre de la tabla para lectores de pantalla (también nombra la zona desplazable). */
+  label: string;
   head: { label: string; numeric?: boolean }[];
   children: ReactNode;
   foot?: ReactNode;
   minWidth?: number;
 }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
+    // En celular la tabla se desplaza de lado: el contenedor recibe foco para moverla con el teclado.
+    <div
+      role="region"
+      aria-label={label}
+      tabIndex={0}
+      className="overflow-x-auto rounded-2xl border border-border bg-surface outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
       <table className="w-full text-sm" style={minWidth ? { minWidth } : undefined}>
+        <caption className="sr-only">{label}</caption>
         <thead>
           <tr className="bg-surface-2/50 text-left text-muted">
             {head.map((h) => (

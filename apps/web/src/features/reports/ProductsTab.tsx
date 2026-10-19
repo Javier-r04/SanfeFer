@@ -146,6 +146,7 @@ export function ProductsTab({ range }: { range: ReportRange }) {
 
       {rows.length ? (
         <DataTable
+          label="Ventas por producto"
           minWidth={680}
           head={[
             { label: 'Producto' },
