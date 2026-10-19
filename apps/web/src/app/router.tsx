@@ -7,6 +7,8 @@ import { PinLoginPage } from '@/features/auth/PinLoginPage';
 import { ComingSoon } from '@/features/common/ComingSoon';
 import { NotFoundPage } from '@/features/common/NotFoundPage';
 import { InventoryPage } from '@/features/inventory/InventoryPage';
+import { NewPurchasePage } from '@/features/purchases/NewPurchasePage';
+import { PurchasesPage } from '@/features/purchases/PurchasesPage';
 import { PosPlaceholderPage } from '@/features/pos/PosPlaceholderPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { AdminLayout } from './layouts/AdminLayout';
@@ -82,16 +84,8 @@ export const router = createBrowserRouter([
       { path: 'usuarios', element: <UsersPage /> },
       { path: 'productos', element: <CatalogPage /> },
       { path: 'inventario', element: <InventoryPage /> },
-      {
-        path: 'compras',
-        element: (
-          <ComingSoon
-            title="Compras"
-            phase={2}
-            description="Proveedores y compras que aumentan el inventario."
-          />
-        ),
-      },
+      { path: 'compras', element: <PurchasesPage /> },
+      { path: 'compras/nueva', element: <NewPurchasePage /> },
       {
         path: 'caja',
         element: (

@@ -149,3 +149,57 @@ export interface Page<T> {
   items: T[];
   nextCursor: number | null;
 }
+
+// ───────────── Compras ─────────────
+
+export interface SupplierDto {
+  id: number;
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  taxId: string | null;
+  notes: string | null;
+  active: boolean;
+  purchaseCount: number;
+  /** Total de compras no anuladas. */
+  totalPurchased: number;
+  lastPurchaseAt: string | null;
+}
+
+export type PurchaseStatus = 'RECEIVED' | 'VOIDED';
+
+export interface PurchaseSummaryDto {
+  id: number;
+  purchasedAt: string;
+  supplier: { id: number; name: string };
+  invoiceNumber: string | null;
+  itemCount: number;
+  total: number;
+  status: PurchaseStatus;
+  createdBy: { id: number; name: string };
+  createdAt: string;
+}
+
+export interface PurchaseLineDto {
+  id: number;
+  inventoryItemId: number;
+  name: string;
+  unit: MeasureUnit;
+  quantity: number;
+  unitCost: number;
+  subtotal: number;
+}
+
+export interface PurchaseDto extends PurchaseSummaryDto {
+  notes: string | null;
+  items: PurchaseLineDto[];
+  voidedAt: string | null;
+  voidReason: string | null;
+  voidedBy: { id: number; name: string } | null;
+}
+
+export interface PurchasesPage extends Page<PurchaseSummaryDto> {
+  /** Suma de las compras recibidas (no anuladas) que cumplen los filtros. */
+  totalReceived: number;
+}

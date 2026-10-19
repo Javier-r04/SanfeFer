@@ -27,7 +27,13 @@ const shortcuts = [
     Icon: Users,
     ready: true,
   },
-  { to: '/admin/compras', label: 'Compras', text: 'Fase 2', Icon: Truck, ready: false },
+  {
+    to: '/admin/compras',
+    label: 'Compras',
+    text: 'Proveedores y compras que suben el stock',
+    Icon: Truck,
+    ready: true,
+  },
 ];
 
 export function AdminHomePage() {

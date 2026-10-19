@@ -27,7 +27,7 @@ function Availability({ p }: { p: ProductDto }) {
   if (p.stockStatus === 'OUT') return <Badge tone="danger">Agotado</Badge>;
   return (
     <Badge tone={p.stockStatus === 'LOW' ? 'warning' : 'primary'}>
-      {p.stockStatus === 'LOW' ? 'Stock bajo · ' : ''}alcanza para {p.available}
+      {p.stockStatus === 'LOW' ? `Stock bajo · para ${p.available}` : `Alcanza para ${p.available}`}
     </Badge>
   );
 }
@@ -212,7 +212,7 @@ export function ProductsView() {
                           {p.margin !== null && p.cost > 0 ? ` · ${formatPercent(p.margin)}` : ''}
                         </p>
                       </div>
-                      <div className="w-44">
+                      <div className="w-48">
                         <Availability p={p} />
                       </div>
                       <div className="ml-auto flex items-center gap-1">

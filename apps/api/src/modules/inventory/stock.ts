@@ -36,7 +36,19 @@ export async function applyStockChange(tx: Tx, change: StockChange) {
 
   const stockAfter = item.stock.plus(change.delta);
   let averageCost = item.averageCost;
-  if (change.delta.gt(0) && change.unitCost != null && COST_AFFECTING.includes(change.type)) {
+  if (change.type === 'PURCHASE_VOID' && change.unitCost != null && stockAfter.gt(0)) {
+    // Deshace el aporte de la compra anulada al promedio: (valor actual − valor de la compra) / stock restante.
+    const reverted = item.stock
+      .times(item.averageCost)
+      .plus(change.delta.times(change.unitCost))
+      .div(stockAfter)
+      .toDecimalPlaces(4);
+    if (reverted.gte(0)) averageCost = reverted;
+  } else if (
+    change.delta.gt(0) &&
+    change.unitCost != null &&
+    COST_AFFECTING.includes(change.type)
+  ) {
     // El stock negativo (ventas sin existencia) no debe arrastrar el promedio.
     const previous = Decimal.max(item.stock, 0);
     const total = previous.plus(change.delta);
