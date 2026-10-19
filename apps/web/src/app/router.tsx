@@ -1,10 +1,12 @@
 import { createBrowserRouter } from 'react-router';
 import { AdminHomePage } from '@/features/admin/AdminHomePage';
 import { AdminLoginPage } from '@/features/auth/AdminLoginPage';
+import { CatalogPage } from '@/features/catalog/CatalogPage';
 import { GuestOnly, RequireAuth, RootRedirect } from '@/features/auth/guards';
 import { PinLoginPage } from '@/features/auth/PinLoginPage';
 import { ComingSoon } from '@/features/common/ComingSoon';
 import { NotFoundPage } from '@/features/common/NotFoundPage';
+import { InventoryPage } from '@/features/inventory/InventoryPage';
 import { PosPlaceholderPage } from '@/features/pos/PosPlaceholderPage';
 import { UsersPage } from '@/features/users/UsersPage';
 import { AdminLayout } from './layouts/AdminLayout';
@@ -78,26 +80,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminHomePage /> },
       { path: 'usuarios', element: <UsersPage /> },
-      {
-        path: 'productos',
-        element: (
-          <ComingSoon
-            title="Productos y menú"
-            phase={1}
-            description="Categorías, productos, extras y recetas que descuentan inventario."
-          />
-        ),
-      },
-      {
-        path: 'inventario',
-        element: (
-          <ComingSoon
-            title="Inventario"
-            phase={1}
-            description="Insumos, stock mínimo con alertas y el historial de movimientos."
-          />
-        ),
-      },
+      { path: 'productos', element: <CatalogPage /> },
+      { path: 'inventario', element: <InventoryPage /> },
       {
         path: 'compras',
         element: (

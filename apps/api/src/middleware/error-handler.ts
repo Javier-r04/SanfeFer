@@ -10,6 +10,12 @@ const FIELD_LABELS: Record<string, string> = {
   name: 'ese nombre',
 };
 
+// Restricciones únicas compuestas (Prisma informa todos los campos).
+const COMPOUND_LABELS: Record<string, { field: string; label: string }> = {
+  'categoryId,name': { field: 'name', label: 'ese nombre en la categoría' },
+  'groupId,name': { field: 'name', label: 'ese nombre en el grupo' },
+};
+
 function send(res: Response, status: number, body: ApiErrorBody['error']) {
   res.status(status).json({ error: body } satisfies ApiErrorBody);
 }
@@ -44,8 +50,10 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
-      const target = (err.meta?.target as string[] | undefined)?.[0];
-      const label = (target && FIELD_LABELS[target]) ?? 'esos datos';
+      const fields = (err.meta?.target as string[] | undefined) ?? [];
+      const compound = COMPOUND_LABELS[fields.join(',')];
+      const target = compound?.field ?? fields[0];
+      const label = compound?.label ?? (target && FIELD_LABELS[target]) ?? 'esos datos';
       return send(res, 409, {
         code: 'DUPLICATE',
         message: `Ya existe un registro con ${label}.`,

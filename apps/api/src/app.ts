@@ -7,6 +7,8 @@ import { env } from './config/env';
 import { prisma } from './lib/prisma';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRouter } from './modules/auth/auth.routes';
+import { catalogRouter } from './modules/catalog/catalog.routes';
+import { inventoryRouter } from './modules/inventory/inventory.routes';
 import { usersRouter } from './modules/users/users.routes';
 
 export function createApp() {
@@ -40,6 +42,8 @@ export function createApp() {
 
   api.use('/auth', authRouter);
   api.use('/users', usersRouter);
+  api.use('/catalog', catalogRouter);
+  api.use('/inventory', inventoryRouter);
 
   app.use('/api', api);
   app.use(notFoundHandler);

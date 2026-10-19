@@ -9,6 +9,7 @@ interface ModalProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  size?: 'md' | 'lg';
   className?: string;
 }
 
@@ -23,6 +24,7 @@ export function Modal({
   description,
   children,
   footer,
+  size = 'md',
   className,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -48,7 +50,8 @@ export function Modal({
       }}
       className={cn(
         'm-0 mt-auto max-h-[92dvh] w-full max-w-none rounded-t-3xl bg-surface p-0 text-text',
-        'sm:m-auto sm:max-w-lg sm:rounded-3xl',
+        'sm:m-auto sm:rounded-3xl',
+        size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg',
         'backdrop:bg-overlay',
         className,
       )}

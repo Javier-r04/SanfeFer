@@ -18,6 +18,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import { Avatar, LogoMark } from '@/components/ui/Brand';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useLogout, useSession } from '@/features/auth/api';
+import { useInventorySummary } from '@/features/inventory/api';
 import { cn } from '@/lib/cn';
 
 export const adminNav = [
@@ -40,6 +41,8 @@ function initialsOf(name: string) {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { data: user } = useSession();
   const logout = useLogout();
+  const summary = useInventorySummary(user?.role === 'ADMIN');
+  const alerts = (summary.data?.lowCount ?? 0) + (summary.data?.outCount ?? 0);
   return (
     <div className="flex h-full flex-col gap-1 px-3.5 py-5">
       <div className="flex items-center gap-2.5 px-2 pb-4">
@@ -64,6 +67,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             <Icon aria-hidden="true" className="size-5" />
             {label}
+            {to === '/admin/inventario' && alerts > 0 ? (
+              <span className="ml-auto rounded-full bg-warning-soft px-2 py-0.5 text-xs font-extrabold text-warning-ink">
+                {alerts}
+                <span className="sr-only"> con alerta de stock</span>
+              </span>
+            ) : null}
           </NavLink>
         ))}
       </nav>

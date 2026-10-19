@@ -172,7 +172,7 @@ const menu: { category: string; color: string; products: ProductRow[] }[] = [
   },
   {
     category: 'Boquitas',
-    color: 'accent',
+    color: 'danger',
     products: [
       { name: 'Nachos con queso', price: 30, recipe: { Totopos: 120, 'Queso para nachos': 80 } },
       { name: 'Maní salado', price: 10, recipe: { 'Maní salado': 80 } },
