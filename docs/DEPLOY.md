@@ -29,7 +29,9 @@ configurar CORS.
 1. Entra a [supabase.com](https://supabase.com) → **New project**.
    - **Name:** `sanfefer`.
    - **Database password:** genera una y guárdala. La necesitarás en el paso 3.
-   - **Region:** _East US (North Virginia)_, la misma zona que Render en `render.yaml`.
+   - **Region:** la más cercana que ofrezca (o "Americas"). Después revisa en qué región quedó
+     (aparece en la URL, p. ej. `aws-1-us-west-2`) y deja `region` de `render.yaml` en la misma zona:
+     `us-west-2` → `oregon`, `us-east-1` → `virginia`, `us-east-2` → `ohio`. Este repositorio ya usa `oregon`.
 2. Cuando termine de crearse, toca **Connect** (arriba) → pestaña **ORMs** → **Prisma**.
    Verás dos cadenas:
    - `DATABASE_URL`: el _pooler_ en **modo transacción**, puerto **6543**, con `?pgbouncer=true`.
