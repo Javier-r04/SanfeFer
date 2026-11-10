@@ -229,7 +229,7 @@ export async function sendOrder(tabId: number, raw: SendOrderInput, userId: numb
     const order = await tx.order.create({ data: { tabId, createdById: userId } });
     for (const l of lines) {
       const unitCost = [...l.consumption].reduce(
-        (sum, [itemId, qty]) => sum.plus(qty.times(stock.get(itemId)!.averageCost)),
+        (sum, [itemId, qty]) => sum.plus(qty.times(stock.get(itemId)!.purchaseCost)),
         D(0),
       );
       const item = await tx.orderItem.create({

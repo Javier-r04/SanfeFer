@@ -32,7 +32,7 @@ export function InventoryTab({ range }: { range: ReportRange }) {
         <KpiCard
           label="Valor del inventario"
           value={formatMoney(r.totalValue)}
-          footer={<span className="text-muted">Existencia × costo promedio, hoy</span>}
+          footer={<span className="text-muted">Existencia × costo de compra, hoy</span>}
         />
         <KpiCard
           label="Stock bajo"
@@ -47,7 +47,7 @@ export function InventoryTab({ range }: { range: ReportRange }) {
         <KpiCard
           label="Mermas del periodo"
           value={formatMoney(r.wasteCost)}
-          footer={<span className="text-muted">Al costo promedio</span>}
+          footer={<span className="text-muted">Al costo de compra</span>}
         />
       </div>
 
@@ -78,7 +78,7 @@ export function InventoryTab({ range }: { range: ReportRange }) {
             { label: 'Artículo' },
             { label: 'Existencia', numeric: true },
             { label: 'Estado' },
-            { label: 'Costo prom.', numeric: true },
+            { label: 'Costo de compra', numeric: true },
             { label: 'Valor', numeric: true },
             { label: 'Comprado', numeric: true },
             { label: 'Vendido', numeric: true },
@@ -97,7 +97,7 @@ export function InventoryTab({ range }: { range: ReportRange }) {
               <td className={td}>
                 <StockBadge status={i.status} />
               </td>
-              <td className={tdNum}>{formatUnitCost(i.averageCost)}</td>
+              <td className={tdNum}>{formatUnitCost(i.purchaseCost)}</td>
               <td className={cn(tdNum, 'font-bold')}>{formatMoney(i.value)}</td>
               <td className={tdNum}>{qty(i.purchased, i.unit)}</td>
               <td className={tdNum}>{qty(i.sold, i.unit)}</td>

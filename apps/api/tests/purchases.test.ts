@@ -31,7 +31,7 @@ async function setup(admin: Agent) {
 const getItem = (admin: Agent, id: number) =>
   admin
     .get(`/api/inventory/items/${id}`)
-    .then((r) => r.body.item as { stock: number; averageCost: number });
+    .then((r) => r.body.item as { stock: number; purchaseCost: number });
 
 describe('proveedores', () => {
   it('crea, normaliza el correo y no elimina si tiene compras', async () => {
@@ -82,7 +82,7 @@ describe('proveedores', () => {
 });
 
 describe('compras', () => {
-  it('sube el stock, recalcula el costo promedio y deja el movimiento', async () => {
+  it('sube el stock, fija el costo de compra y deja el movimiento', async () => {
     const admin = await adminAgent();
     const { supplierId, gallo, corona } = await setup(admin);
     const res = await admin
@@ -106,9 +106,9 @@ describe('compras', () => {
     });
     expect(p.items[0]).toMatchObject({ name: 'Gallo', quantity: 24, unitCost: 7.5, subtotal: 180 });
 
-    // Gallo: (10 × 7 + 24 × 7.5) / 34 = 7.3529
-    expect(await getItem(admin, gallo)).toMatchObject({ stock: 34, averageCost: 7.3529 });
-    expect(await getItem(admin, corona)).toMatchObject({ stock: 12, averageCost: 11.5 });
+    // Gallo costaba 7 y esta compra lo trajo a 7.50: ese es su costo de compra ahora.
+    expect(await getItem(admin, gallo)).toMatchObject({ stock: 34, purchaseCost: 7.5 });
+    expect(await getItem(admin, corona)).toMatchObject({ stock: 12, purchaseCost: 11.5 });
 
     const moves = await admin
       .get(`/api/inventory/movements?itemId=${gallo}&type=PURCHASE`)
@@ -156,7 +156,7 @@ describe('compras', () => {
     });
   });
 
-  it('anular devuelve el stock y el costo promedio', async () => {
+  it('anular devuelve el stock y el costo de la compra anterior', async () => {
     const admin = await adminAgent();
     const { supplierId, gallo } = await setup(admin);
     const created = await admin
@@ -181,7 +181,7 @@ describe('compras', () => {
     });
     const gall = await getItem(admin, gallo);
     expect(gall.stock).toBe(10);
-    expect(gall.averageCost).toBeCloseTo(7, 3);
+    expect(gall.purchaseCost).toBeCloseTo(7, 3);
 
     const again = await admin
       .post(`/api/purchases/${id}/void`)
@@ -244,5 +244,29 @@ describe('compras', () => {
       .expect(200);
     expect(page2.body.items).toHaveLength(1);
     expect(page2.body.nextCursor).toBeNull();
+  });
+});
+
+describe('costo de compra', () => {
+  it('es el de la última compra; al anularla vuelve al de la compra anterior', async () => {
+    const admin = await adminAgent();
+    const { supplierId, gallo } = await setup(admin);
+    const buy = async (lineTotal: number) =>
+      (
+        await admin
+          .post('/api/purchases')
+          .send({
+            supplierId,
+            purchasedAt: today,
+            items: [{ inventoryItemId: gallo, quantity: 24, lineTotal }],
+          })
+          .expect(201)
+      ).body.purchase.id as number;
+    await buy(180); // Q 7.50 c/u
+    const second = await buy(192); // Q 8.00 c/u
+    expect((await getItem(admin, gallo)).purchaseCost).toBe(8);
+
+    await admin.post(`/api/purchases/${second}/void`).send({ reason: 'Duplicada' }).expect(200);
+    expect((await getItem(admin, gallo)).purchaseCost).toBe(7.5);
   });
 });

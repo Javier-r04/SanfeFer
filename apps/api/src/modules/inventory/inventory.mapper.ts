@@ -3,10 +3,14 @@ import { stockStatus, type InventoryItemDto, type MovementDto } from '@sanfefer/
 
 const round = (n: number, places: number) => Number(n.toFixed(places));
 
-export function toInventoryItemDto(item: InventoryItem, usedIn: number): InventoryItemDto {
+export function toInventoryItemDto(
+  item: InventoryItem,
+  usedIn: number,
+  sale: { name: string; price: number } | null = null,
+): InventoryItemDto {
   const stock = Number(item.stock);
   const minStock = Number(item.minStock);
-  const averageCost = Number(item.averageCost);
+  const purchaseCost = Number(item.purchaseCost);
   return {
     id: item.id,
     name: item.name,
@@ -14,8 +18,11 @@ export function toInventoryItemDto(item: InventoryItem, usedIn: number): Invento
     unit: item.unit,
     stock,
     minStock,
-    averageCost,
-    stockValue: round(Math.max(stock, 0) * averageCost, 2),
+    purchaseCost,
+    stockValue: round(Math.max(stock, 0) * purchaseCost, 2),
+    saleProduct: sale?.name ?? null,
+    salePrice: sale?.price ?? null,
+    unitProfit: sale ? round(sale.price - purchaseCost, 2) : null,
     status: stockStatus(stock, minStock),
     active: item.active,
     usedIn,

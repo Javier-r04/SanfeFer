@@ -223,16 +223,16 @@ model ProductModifierGroup {
 // ───────────────────────── Inventario ─────────────────────────
 
 model InventoryItem {
-  id          Int               @id @default(autoincrement())
-  name        String            @unique
-  kind        InventoryItemKind
-  unit        MeasureUnit
-  stock       Decimal           @default(0) @db.Decimal(12, 3)
-  minStock    Decimal           @default(0) @db.Decimal(12, 3) // alerta cuando stock <= minStock
-  averageCost Decimal           @default(0) @db.Decimal(12, 4) // costo promedio ponderado por unidad
-  active      Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id           Int               @id @default(autoincrement())
+  name         String            @unique
+  kind         InventoryItemKind
+  unit         MeasureUnit
+  stock        Decimal           @default(0) @db.Decimal(12, 3)
+  minStock     Decimal           @default(0) @db.Decimal(12, 3) // alerta cuando stock <= minStock
+  purchaseCost Decimal           @default(0) @map("averageCost") @db.Decimal(12, 4) // costo por unidad de la última compra
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   productComponents  ProductComponent[]
   modifierComponents ModifierOptionComponent[]

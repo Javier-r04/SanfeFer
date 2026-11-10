@@ -31,7 +31,7 @@ async function scenario() {
       unit: 'UNIT',
       stock: 100,
       minStock: 24,
-      averageCost: 8,
+      purchaseCost: 8,
     },
   });
   const gallo = await prisma.product.create({

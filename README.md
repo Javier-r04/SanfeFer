@@ -93,8 +93,8 @@ vercel.json     Web en Vercel; reenvía /api a Render
 - **Bloqueo** tras 5 intentos fallidos durante 5 minutos (el admin puede desbloquear), más un límite de intentos por dispositivo.
 - **Jornada**: día calendario en hora de Guatemala (`America/Guatemala`); lo vendido después de medianoche cuenta para el día siguiente.
 - **Dinero** en `Decimal`, nunca en `float`.
-- **Inventario**: todo cambio de stock pasa por un solo punto (`apps/api/src/modules/inventory/stock.ts`), dentro de una transacción, con bloqueo de fila y su movimiento en el historial. Las entradas con costo recalculan el **costo promedio ponderado**.
-- **Compras**: se registran como en la factura (cantidad y total de la línea); el costo por unidad se deriva. La compra y el aumento de stock van en una sola transacción. Anular devuelve stock y costo promedio, y se rechaza si lo comprado ya se usó.
+- **Inventario**: todo cambio de stock pasa por un solo punto (`apps/api/src/modules/inventory/stock.ts`), dentro de una transacción, con bloqueo de fila y su movimiento en el historial. El **costo de compra** de cada artículo es el de su última entrada con costo (compra, inicial o entrada manual). El inventario muestra también el **precio de venta** del producto que lo vende tal cual (p. ej. la cerveza) y la ganancia por unidad.
+- **Compras**: se registran como en la factura (cantidad y total de la línea); el costo por unidad se deriva. La compra y el aumento de stock van en una sola transacción. Anular devuelve el stock y el costo de la compra anterior, y se rechaza si lo comprado ya se usó.
 - **POS**: no hay pantalla de barra. Al **confirmar la orden** los productos quedan entregados y el inventario se descuenta (receta + extras). La orden en curso se guarda en el dispositivo hasta confirmarla. Mesas y cuentas se refrescan cada 5 s.
 - **Cancelar productos**: solo un administrador (o un vendedor con el PIN de un administrador). Al cancelar se elige si el producto vuelve al inventario o, si ya se preparó, se registra como merma.
 - **Mesas**: las configura el admin en **Admin → Mesas** (nombre, zona, orden, visibles u ocultas, y "Agregar varias"). Una mesa con cuentas abiertas no se oculta, y una con historial no se borra: se oculta.
@@ -106,7 +106,7 @@ vercel.json     Web en Vercel; reenvía /api a Render
 - **Caja**: solo el **administrador** la abre, registra entradas y salidas y la cierra; el vendedor cobra pero no ve montos de caja (el POS solo sabe si hay una abierta). Solo una caja abierta a la vez (índice único parcial en la base de datos). Debe haber = fondo + ventas en efectivo + entradas − salidas; al cerrar se registra lo contado y la diferencia. El cierre del día cuenta los cobros por **fecha de cobro** en la jornada de Guatemala.
 - **Reportes** (solo admin): usan el mismo criterio que el cierre del día. Cuentan las cuentas cobradas por **fecha de cobro** (jornada de Guatemala), sin los productos cancelados.
   - **Ventas netas** = subtotal − descuentos.
-  - **Utilidad bruta** = ventas netas − costo de lo vendido. El costo es el de la receta y los extras al costo promedio del momento en que se confirmó la orden.
+  - **Utilidad bruta** = ventas netas − costo de lo vendido. El costo es el de la receta y los extras al costo de compra del momento en que se confirmó la orden.
   - El cargo por servicio se muestra aparte y no cuenta como utilidad. Las mermas se restan al final.
   - Cada periodo se compara con el anterior del mismo largo. Las semanas empiezan en lunes. El rango máximo es de dos años.
 - **CSV**: se genera en el navegador. Usa coma como separador, punto decimal, UTF-8 con BOM (Excel muestra bien los acentos) y fechas `AAAA-MM-DD`. Los textos que empiezan con `=`, `+`, `-` o `@` se neutralizan para que Excel no los ejecute como fórmulas.

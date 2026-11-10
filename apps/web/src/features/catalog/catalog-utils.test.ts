@@ -13,11 +13,11 @@ describe('selectionRule', () => {
 
 describe('recipeCost', () => {
   const items = [
-    { id: 1, averageCost: 0.025 },
-    { id: 2, averageCost: 0.5 },
+    { id: 1, purchaseCost: 0.025 },
+    { id: 2, purchaseCost: 0.5 },
   ] as InventoryItemDto[];
 
-  it('suma cantidad × costo promedio e ignora líneas incompletas', () => {
+  it('suma cantidad × costo de compra e ignora líneas incompletas', () => {
     expect(
       recipeCost(
         [

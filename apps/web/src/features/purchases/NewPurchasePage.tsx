@@ -40,7 +40,7 @@ const newLine = () => ({
   lineTotal: Number.NaN,
 });
 
-/** Compara el costo de esta compra con el promedio actual del artículo. */
+/** Compara el costo de esta compra con el de la compra anterior del artículo. */
 function CostHint({
   item,
   quantity,
@@ -55,11 +55,11 @@ function CostHint({
   const unit = UNIT_LABELS[item.unit];
   let comparison = '';
   let tone = 'text-muted';
-  if (item.averageCost > 0) {
-    const diff = (unitCost - item.averageCost) / item.averageCost;
-    if (Math.abs(diff) < 0.005) comparison = ' · igual al promedio';
+  if (item.purchaseCost > 0) {
+    const diff = (unitCost - item.purchaseCost) / item.purchaseCost;
+    if (Math.abs(diff) < 0.005) comparison = ' · igual que la compra anterior';
     else {
-      comparison = ` · ${diff > 0 ? '↑' : '↓'} ${formatPercent(Math.abs(diff))} ${diff > 0 ? 'más caro' : 'más barato'} que el promedio (${formatUnitCost(item.averageCost)})`;
+      comparison = ` · ${diff > 0 ? '↑' : '↓'} ${formatPercent(Math.abs(diff))} ${diff > 0 ? 'más caro' : 'más barato'} que la compra anterior (${formatUnitCost(item.purchaseCost)})`;
       if (diff > 0.1) tone = 'text-warning-ink font-bold';
     }
   }

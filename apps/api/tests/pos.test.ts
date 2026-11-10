@@ -26,7 +26,7 @@ async function setup() {
 
   const item = (name: string, unit: 'UNIT' | 'G', stock: number, cost: number) =>
     prisma.inventoryItem.create({
-      data: { name, kind: 'SUPPLY', unit, stock, averageCost: cost, minStock: 0 },
+      data: { name, kind: 'SUPPLY', unit, stock, purchaseCost: cost, minStock: 0 },
     });
   const limon = await item('Limón', 'UNIT', 10, 0.5);
   const gallo = await item('Gallo', 'UNIT', 24, 7.5);

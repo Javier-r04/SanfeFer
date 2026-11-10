@@ -77,7 +77,7 @@ export interface ProductDto {
   sortOrder: number;
   recipe: RecipeLineDto[];
   modifierGroupIds: number[];
-  /** Costo solo de la receta, con el costo promedio actual. */
+  /** Costo solo de la receta, con el costo de compra actual. */
   recipeCost: number;
   /** Precio más los recargos mínimos de los extras obligatorios (lo mínimo que paga el cliente). */
   basePrice: number;
@@ -118,8 +118,14 @@ export interface InventoryItemDto {
   unit: MeasureUnit;
   stock: number;
   minStock: number;
-  averageCost: number;
+  /** Costo por unidad de la última compra. */
+  purchaseCost: number;
   stockValue: number;
+  /** Producto del menú que lo vende tal cual (p. ej. "Gallo" para la cerveza); null si es insumo. */
+  saleProduct: string | null;
+  salePrice: number | null;
+  /** Precio de venta − costo de compra. */
+  unitProfit: number | null;
   status: StockStatus;
   active: boolean;
   /** Productos y extras cuya receta lo usa. */
@@ -503,8 +509,8 @@ export interface InventoryReportRowDto {
   active: boolean;
   stock: number;
   minStock: number;
-  averageCost: number;
-  /** stock × costo promedio */
+  purchaseCost: number;
+  /** stock × costo de compra */
   value: number;
   status: StockStatus;
   /** Movimientos del rango, en unidades del insumo. */
