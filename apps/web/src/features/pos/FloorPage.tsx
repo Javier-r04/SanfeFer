@@ -1,18 +1,14 @@
 import type { FloorTableDto, TabSummaryDto } from '@sanfefer/shared';
 import { Plus, UserRound, UsersRound } from 'lucide-react';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Field';
-import { Modal } from '@/components/ui/Modal';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { useSession } from '@/features/auth/api';
-import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/format';
-import { toast } from '@/stores/toast';
-import { useFloor, useOpenTab } from './api';
+import { useFloor } from './api';
 import { PosHeader } from './components';
+import { OpenTabModal } from './OpenTabModal';
 import { timeAgo, useNow } from './pos-utils';
 
 function tableTotals(t: FloorTableDto) {
@@ -22,71 +18,10 @@ function tableTotals(t: FloorTableDto) {
   };
 }
 
-function NewWalkInModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const openTab = useOpenTab();
-  const navigate = useNavigate();
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return setError('Escribe el nombre del cliente');
-    openTab.mutate(
-      { customerName: name.trim(), tableId: null },
-      {
-        onSuccess: ({ tab }) => {
-          setName('');
-          onClose();
-          navigate(`/pos/cuentas/${tab.id}/orden`);
-        },
-        onError: (err) => setError(errorMessage(err)),
-      },
-    );
-  };
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Cliente sin mesa"
-      description="Una cuenta a nombre del cliente, por ejemplo quien pide en la barra o espera de pie."
-      footer={
-        <>
-          <Button variant="outline" size="lg" className="flex-1" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="walkin-form"
-            size="lg"
-            className="flex-1"
-            loading={openTab.isPending}
-          >
-            Abrir cuenta
-          </Button>
-        </>
-      }
-    >
-      <form id="walkin-form" onSubmit={submit} noValidate>
-        <Field label="Nombre del cliente" error={error ?? undefined}>
-          {(a) => (
-            <Input
-              {...a}
-              value={name}
-              autoFocus
-              autoComplete="off"
-              maxLength={40}
-              placeholder="Ej. Don Beto"
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null);
-              }}
-            />
-          )}
-        </Field>
-      </form>
-    </Modal>
-  );
+/** Nombres de las cuentas de la mesa, sin los automáticos ("Cliente 1"). */
+function tableLabel(t: FloorTableDto) {
+  const names = t.tabs.map((x) => x.customerName).filter((n) => !/^cliente \d+$/i.test(n));
+  return names.length ? names.join(', ') : null;
 }
 
 function WalkInRow({ tab, now, onOpen }: { tab: TabSummaryDto; now: number; onOpen: () => void }) {
@@ -121,13 +56,12 @@ function WalkInRow({ tab, now, onOpen }: { tab: TabSummaryDto; now: number; onOp
 
 export function FloorPage() {
   const floor = useFloor();
-  const openTab = useOpenTab();
   const navigate = useNavigate();
   const { data: user } = useSession();
   const now = useNow();
   const [zone, setZone] = useState<string>('Todas');
-  const [walkInOpen, setWalkInOpen] = useState(false);
-  const [opening, setOpening] = useState<number | null>(null);
+  /** undefined = cerrado; null = cliente sin mesa; número = mesa elegida. */
+  const [opening, setOpening] = useState<number | null | undefined>(undefined);
 
   const zones = useMemo(
     () => [
@@ -140,16 +74,8 @@ export function FloorPage() {
 
   const onTable = (t: FloorTableDto) => {
     if (t.tabs.length > 0) return navigate(`/pos/cuentas/${t.tabs[0]!.id}`);
-    // Mesa libre: se abre la cuenta y se va directo a tomar la orden.
+    // Mesa libre: se pregunta el nombre (opcional) y se va directo a tomar la orden.
     setOpening(t.id);
-    openTab.mutate(
-      { tableId: t.id },
-      {
-        onSuccess: ({ tab }) => navigate(`/pos/cuentas/${tab.id}/orden`),
-        onError: (e) => toast.error(errorMessage(e)),
-        onSettled: () => setOpening(null),
-      },
-    );
   };
 
   return (
@@ -194,7 +120,6 @@ export function FloorPage() {
                   key={t.id}
                   type="button"
                   onClick={() => onTable(t)}
-                  disabled={opening === t.id}
                   aria-label={
                     busy
                       ? `${t.name}, ${t.tabs.length} cuenta${t.tabs.length === 1 ? '' : 's'}, ${formatMoney(subtotal)}`
@@ -226,13 +151,11 @@ export function FloorPage() {
                         {formatMoney(subtotal)}
                       </span>
                       <span className="truncate text-[11px] font-semibold">
-                        {openedAt ? timeAgo(openedAt, now) : ''}
+                        {tableLabel(t) ?? (openedAt ? timeAgo(openedAt, now) : '')}
                       </span>
                     </span>
                   ) : (
-                    <span className="text-xs text-muted">
-                      {opening === t.id ? 'Abriendo…' : 'Libre'}
-                    </span>
+                    <span className="text-xs text-muted">Libre</span>
                   )}
                 </button>
               );
@@ -254,7 +177,7 @@ export function FloorPage() {
             ))}
             <button
               type="button"
-              onClick={() => setWalkInOpen(true)}
+              onClick={() => setOpening(null)}
               className="flex h-14 items-center justify-center gap-2 rounded-2xl border-[1.5px] border-dashed border-border-strong font-bold text-primary-ink"
             >
               <Plus aria-hidden="true" className="size-5" strokeWidth={2.6} />
@@ -275,7 +198,11 @@ export function FloorPage() {
           ) : null}
         </div>
       )}
-      <NewWalkInModal open={walkInOpen} onClose={() => setWalkInOpen(false)} />
+      <OpenTabModal
+        open={opening !== undefined}
+        tableId={opening ?? null}
+        onClose={() => setOpening(undefined)}
+      />
     </div>
   );
 }

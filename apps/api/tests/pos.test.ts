@@ -133,6 +133,29 @@ describe('cuentas y mesas', () => {
     ]);
   });
 
+  it('no repite el nombre de una cuenta abierta en la misma mesa', async () => {
+    const { seller, table } = await setup();
+    const other = await prisma.diningTable.create({ data: { name: 'Terraza 1' } });
+    await openTab(seller, { tableId: table.id, customerName: 'Andrea' });
+    const dup = await seller
+      .post('/api/pos/tabs')
+      .send({ tableId: table.id, customerName: ' andrea ' })
+      .expect(409);
+    expect(dup.body.error.message).toBe('Ya hay una cuenta a nombre de Andrea en esta mesa.');
+    expect(dup.body.error.fields.customerName).toBe(
+      'Ya hay una cuenta con ese nombre en esta mesa',
+    );
+
+    // En otra mesa o sin mesa sí se puede.
+    const there = await openTab(seller, { tableId: other.id, customerName: 'Andrea' });
+    await openTab(seller, { customerName: 'Andrea' });
+    // Mover a una mesa donde ya hay alguien con ese nombre tampoco.
+    await seller.patch(`/api/pos/tabs/${there.id}`).send({ tableId: table.id }).expect(409);
+    const b = await openTab(seller, { tableId: table.id });
+    await seller.patch(`/api/pos/tabs/${b.id}`).send({ customerName: 'ANDREA' }).expect(409);
+    await seller.patch(`/api/pos/tabs/${b.id}`).send({ customerName: 'Luis' }).expect(200);
+  });
+
   it('un cliente sin mesa necesita nombre y aparece aparte', async () => {
     const { seller } = await setup();
     const res = await seller.post('/api/pos/tabs').send({}).expect(400);
