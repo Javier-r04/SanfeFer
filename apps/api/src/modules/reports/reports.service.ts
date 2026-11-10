@@ -358,7 +358,7 @@ export async function inventoryReport(q: ReportRangeQuery): Promise<InventoryRep
     .map((i) => {
       const stock = Number(i.stock);
       const minStock = Number(i.minStock);
-      const averageCost = Number(i.averageCost);
+      const purchaseCost = Number(i.purchaseCost);
       return {
         id: i.id,
         name: i.name,
@@ -367,8 +367,8 @@ export async function inventoryReport(q: ReportRangeQuery): Promise<InventoryRep
         active: i.active,
         stock,
         minStock,
-        averageCost,
-        value: fromCents(toCents(Math.max(0, stock) * averageCost)),
+        purchaseCost,
+        value: fromCents(toCents(Math.max(0, stock) * purchaseCost)),
         status: stockStatus(stock, minStock),
         purchased: round3(qty(i.id, 'PURCHASE', 'PURCHASE_VOID')),
         sold: round3(-qty(i.id, 'SALE', 'SALE_VOID')),

@@ -172,7 +172,7 @@ export function MovementModal({
               <Field
                 label={`Costo por ${unit} (opcional)`}
                 error={errors.unitCost?.message}
-                hint={`Promedio actual ${formatUnitCost(item.averageCost)}`}
+                hint={`Costo de compra actual ${formatUnitCost(item.purchaseCost)}. Si lo escribes, pasa a ser el nuevo.`}
               >
                 {(a) => (
                   <Input

@@ -229,7 +229,7 @@ export async function seedHistory(
   ]);
   const itemByName = new Map(items.map((i) => [i.name, i]));
   const itemById = new Map(items.map((i) => [i.id, i]));
-  const cost = (itemId: number) => Number(itemById.get(itemId)!.averageCost);
+  const cost = (itemId: number) => Number(itemById.get(itemId)!.purchaseCost);
   const supplierId = (name: string) => suppliers.find((s) => s.name === name)!.id;
 
   const events: StockEvent[] = [];

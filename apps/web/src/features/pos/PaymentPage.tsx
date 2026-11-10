@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { ErrorState, LoadingState } from '@/components/ui/States';
-import { useCurrentCash } from '@/features/cash/api';
+import { useSession } from '@/features/auth/api';
 import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatMoney, formatTime } from '@/lib/format';
 import { TicketModal } from '@/printing/TicketModal';
 import { toast } from '@/stores/toast';
-import { useAddPayment, useDeletePayment, useTab } from './api';
+import { useAddPayment, useCashStatus, useDeletePayment, useTab } from './api';
 import { PosHeader } from './components';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'];
@@ -29,7 +29,8 @@ function pressKey(value: string, key: string) {
 export function PaymentPage() {
   const tabId = Number(useParams().tabId);
   const tab = useTab(tabId);
-  const cash = useCurrentCash();
+  const { data: user } = useSession();
+  const cash = useCashStatus();
   const pay = useAddPayment();
   const removePayment = useDeletePayment();
   const [method, setMethod] = useState<'CASH' | 'CARD'>('CASH');
@@ -159,13 +160,19 @@ export function PaymentPage() {
             <p className="flex items-center gap-2 font-bold">
               <Wallet aria-hidden="true" className="size-5" /> La caja está cerrada
             </p>
-            <p className="text-sm">Para cobrar, primero abre la caja con el fondo inicial.</p>
-            <Link
-              to="/pos/caja"
-              className="self-start rounded-xl bg-warning px-4 py-2.5 text-sm font-extrabold text-on-warning"
-            >
-              Abrir caja
-            </Link>
+            {user?.role === 'ADMIN' ? (
+              <>
+                <p className="text-sm">Para cobrar, primero abre la caja con el fondo inicial.</p>
+                <Link
+                  to="/pos/caja"
+                  className="self-start rounded-xl bg-warning px-4 py-2.5 text-sm font-extrabold text-on-warning"
+                >
+                  Abrir caja
+                </Link>
+              </>
+            ) : (
+              <p className="text-sm">Pide al administrador que abra la caja para poder cobrar.</p>
+            )}
           </div>
         ) : null}
 

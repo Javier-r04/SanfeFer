@@ -9,7 +9,7 @@ import {
   Split,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { errorMessage } from '@/lib/api';
@@ -18,20 +18,19 @@ import { useSettings } from '@/features/settings/api';
 import { formatMoney, formatTime } from '@/lib/format';
 import { TicketModal } from '@/printing/TicketModal';
 import { toast } from '@/stores/toast';
-import { useCloseZeroTab, useOpenTab, useSetCharges, useTab } from './api';
+import { useCloseZeroTab, useSetCharges, useTab } from './api';
 import { cartTotals, useTabCart } from './cart';
-import { ItemStatusBadge, PosHeader } from './components';
+import { PosHeader } from './components';
 import { DiscountModal } from './DiscountModal';
 import { ItemActionsModal } from './ItemActionsModal';
 import { MoveItemsModal } from './MoveItemsModal';
 import { timeAgo, useNow } from './pos-utils';
+import { OpenTabModal } from './OpenTabModal';
 import { TabOptionsModal } from './TabOptionsModal';
 
 export function TabPage() {
   const tabId = Number(useParams().tabId);
   const tab = useTab(tabId);
-  const openTab = useOpenTab();
-  const navigate = useNavigate();
   const draft = useTabCart(tabId);
   const now = useNow();
   const [selected, setSelected] = useState<OrderItemDto | null>(null);
@@ -39,6 +38,7 @@ export function TabPage() {
   const [moveMode, setMoveMode] = useState<'move' | 'split' | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [ticketOpen, setTicketOpen] = useState(false);
+  const [separateOpen, setSeparateOpen] = useState(false);
   const settings = useSettings();
   const setCharges = useSetCharges();
   const closeZero = useCloseZeroTab();
@@ -67,15 +67,6 @@ export function TabPage() {
         },
       },
       { onError: (e) => toast.error(errorMessage(e)) },
-    );
-
-  const addCustomer = () =>
-    openTab.mutate(
-      { tableId: t.tableId },
-      {
-        onSuccess: ({ tab: created }) => navigate(`/pos/cuentas/${created.id}/orden`),
-        onError: (e) => toast.error(errorMessage(e)),
-      },
     );
 
   return (
@@ -142,10 +133,9 @@ export function TabPage() {
             ))}
             <button
               type="button"
-              onClick={addCustomer}
-              disabled={openTab.isPending}
-              aria-label="Agregar otro cliente a la mesa"
-              title="Agregar cliente"
+              onClick={() => setSeparateOpen(true)}
+              aria-label="Cuenta separada: agregar otra persona a la mesa"
+              title="Cuenta separada"
               className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border-[1.5px] border-dashed border-border-strong text-primary-ink"
             >
               <Plus aria-hidden="true" className="size-6" strokeWidth={2.6} />
@@ -169,7 +159,7 @@ export function TabPage() {
           >
             <ShoppingBag aria-hidden="true" className="size-5 shrink-0" />
             <span className="flex-1 text-sm font-bold">
-              {draftTotals.units} producto{draftTotals.units === 1 ? '' : 's'} sin enviar a barra
+              {draftTotals.units} producto{draftTotals.units === 1 ? '' : 's'} sin confirmar
             </span>
             <span className="text-sm font-extrabold underline underline-offset-4">Continuar</span>
           </Link>
@@ -277,9 +267,6 @@ export function TabPage() {
                         {formatMoney(item.lineTotal)}
                       </span>
                     </span>
-                    <span className="self-start">
-                      <ItemStatusBadge status={item.status} />
-                    </span>
                   </button>
                 );
               })}
@@ -384,6 +371,13 @@ export function TabPage() {
       <TicketModal tabId={ticketOpen ? t.id : null} onClose={() => setTicketOpen(false)} />
       {open ? (
         <TabOptionsModal tab={t} open={optionsOpen} onClose={() => setOptionsOpen(false)} />
+      ) : null}
+      {open && t.tableId ? (
+        <OpenTabModal
+          open={separateOpen}
+          tableId={t.tableId}
+          onClose={() => setSeparateOpen(false)}
+        />
       ) : null}
     </div>
   );

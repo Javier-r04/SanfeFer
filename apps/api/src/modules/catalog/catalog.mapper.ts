@@ -43,7 +43,7 @@ export function toRecipeLine(line: {
   inventoryItem: InventoryItem;
 }): RecipeLineDto {
   const quantity = Number(line.quantity);
-  const unitCost = Number(line.inventoryItem.averageCost);
+  const unitCost = Number(line.inventoryItem.purchaseCost);
   return {
     inventoryItemId: line.inventoryItem.id,
     name: line.inventoryItem.name,
@@ -68,7 +68,7 @@ function portions(lines: Line[]) {
 }
 
 const lineCost = (lines: Line[]) =>
-  lines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.inventoryItem.averageCost), 0);
+  lines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.inventoryItem.purchaseCost), 0);
 
 /**
  * Disponibilidad del producto: lo que permite la receta y, en cada grupo obligatorio,

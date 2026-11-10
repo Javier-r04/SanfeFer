@@ -344,7 +344,7 @@ async function main() {
   const itemIds = new Map<string, number>();
   for (const [name, kind, unit, stock, minStock, cost] of inventoryRows) {
     const item = await prisma.inventoryItem.create({
-      data: { name, kind, unit, stock: D(stock), minStock: D(minStock), averageCost: D(cost) },
+      data: { name, kind, unit, stock: D(stock), minStock: D(minStock), purchaseCost: D(cost) },
     });
     itemIds.set(name, item.id);
   }

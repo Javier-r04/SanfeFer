@@ -5,12 +5,17 @@ import * as billing from './billing.service';
 import * as items from './items.service';
 import * as menu from './menu.service';
 import * as tabs from './tabs.service';
+import { prisma } from '../../lib/prisma';
 
 export async function getMenu(_req: Request, res: Response) {
   res.json({ categories: await menu.getMenu() });
 }
 export async function getFloor(_req: Request, res: Response) {
   res.json(await tabs.getFloor());
+}
+/** Para el cobro: si hay una caja abierta, sin mostrar montos al vendedor. */
+export async function getCashStatus(_req: Request, res: Response) {
+  res.json({ open: (await prisma.cashSession.count({ where: { status: 'OPEN' } })) > 0 });
 }
 export async function openTab(req: Request, res: Response) {
   res.status(201).json({ tab: await tabs.openTab(req.body, currentUser(req).id) });
@@ -28,18 +33,9 @@ export async function cancelTab(req: Request, res: Response) {
 export async function sendOrder(req: Request, res: Response) {
   res.status(201).json(await tabs.sendOrder(parseId(req), req.body, currentUser(req).id));
 }
-export async function setItemStatus(req: Request, res: Response) {
-  res.json({ item: await items.setItemStatus(parseId(req), req.body.status) });
-}
 export async function cancelItem(req: Request, res: Response) {
   const { tabId } = await items.cancelItem(parseId(req), req.body, currentUser(req));
   res.json({ tab: await tabs.getTab(tabId) });
-}
-export async function getBar(_req: Request, res: Response) {
-  res.json(await items.getBar());
-}
-export async function advanceOrder(req: Request, res: Response) {
-  res.json(await items.advanceOrder(parseId(req), req.body.to));
 }
 
 export async function setCharges(req: Request, res: Response) {

@@ -114,7 +114,7 @@ export async function addPayment(tabId: number, raw: PaymentInput, user: AuthUse
     throw new AppError(
       409,
       'CASH_CLOSED',
-      'No hay una caja abierta. Abre la caja antes de cobrar.',
+      'La caja está cerrada. Pide al administrador que la abra para poder cobrar.',
     );
   }
 

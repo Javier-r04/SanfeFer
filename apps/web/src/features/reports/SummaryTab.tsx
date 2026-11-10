@@ -68,7 +68,7 @@ function ProfitAndLoss({ t }: { t: SalesReportDto['totals'] }) {
     <section className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4">
       <div>
         <h2 className="font-extrabold">Utilidad</h2>
-        <p className="text-sm text-muted">Costo según la receta y el costo promedio al vender.</p>
+        <p className="text-sm text-muted">Costo según la receta y el costo de compra al vender.</p>
       </div>
       <dl className="tabular flex flex-col text-sm">
         {rows.map((r) => (

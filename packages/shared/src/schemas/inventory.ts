@@ -40,7 +40,7 @@ export const movementInputSchema = z.discriminatedUnion(
     z.object({
       type: z.literal('MANUAL_IN'),
       quantity: quantitySchema(),
-      /** Si se indica, actualiza el costo promedio. */
+      /** Si se indica, pasa a ser el costo de compra del artículo. */
       unitCost: unitCostSchema('El costo por unidad').optional(),
       reason: reason.optional(),
     }),

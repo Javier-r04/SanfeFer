@@ -13,7 +13,7 @@ async function createItem(admin: Agent, body: Record<string, unknown>) {
     .post('/api/inventory/items')
     .send({ kind: 'SUPPLY', unit: 'ML', minStock: 0, ...body })
     .expect(201);
-  return res.body.item as { id: number; stock: number; averageCost: number; status: string };
+  return res.body.item as { id: number; stock: number; purchaseCost: number; status: string };
 }
 
 describe('artículos de inventario', () => {
@@ -32,7 +32,7 @@ describe('artículos de inventario', () => {
       initialStock: 1800,
       initialCost: 0.0238,
     });
-    expect(item).toMatchObject({ stock: 1800, averageCost: 0.0238, status: 'LOW' });
+    expect(item).toMatchObject({ stock: 1800, purchaseCost: 0.0238, status: 'LOW' });
 
     const moves = await admin.get(`/api/inventory/movements?itemId=${item.id}`).expect(200);
     expect(moves.body.items).toHaveLength(1);
@@ -97,7 +97,7 @@ describe('artículos de inventario', () => {
 });
 
 describe('movimientos', () => {
-  it('entrada manual con costo recalcula el costo promedio ponderado', async () => {
+  it('una entrada manual con costo fija el costo de compra', async () => {
     const admin = await adminAgent();
     const item = await createItem(admin, {
       name: 'Corona',
@@ -109,8 +109,8 @@ describe('movimientos', () => {
       .post(`/api/inventory/items/${item.id}/movements`)
       .send({ type: 'MANUAL_IN', quantity: 30, unitCost: 12 })
       .expect(201);
-    // (10 × 10 + 30 × 12) / 40 = 11.5
-    expect(res.body.item).toMatchObject({ stock: 40, averageCost: 11.5 });
+    // El costo de compra es el de la última entrada, no un promedio.
+    expect(res.body.item).toMatchObject({ stock: 40, purchaseCost: 12 });
     expect(res.body.movement).toMatchObject({
       type: 'MANUAL_IN',
       quantity: 30,
@@ -131,7 +131,7 @@ describe('movimientos', () => {
       .post(`/api/inventory/items/${item.id}/movements`)
       .send({ type: 'MANUAL_IN', quantity: 5 })
       .expect(201);
-    expect(res.body.item).toMatchObject({ stock: 15, averageCost: 7.5 });
+    expect(res.body.item).toMatchObject({ stock: 15, purchaseCost: 7.5 });
   });
 
   it('la merma descuenta, exige motivo y no deja el stock negativo', async () => {
@@ -202,5 +202,62 @@ describe('movimientos', () => {
 
     const bad = await admin.get('/api/inventory/movements?from=18-10-2026').expect(400);
     expect(bad.body.error.message).toBe('La fecha debe tener el formato AAAA-MM-DD');
+  });
+});
+
+describe('costo de compra y precio de venta', () => {
+  it('muestra el precio de venta solo de lo que se vende tal cual', async () => {
+    const admin = await adminAgent();
+    const beer = await createItem(admin, {
+      name: 'Cerveza Gallo 350 ml',
+      kind: 'RESALE',
+      unit: 'UNIT',
+      initialStock: 24,
+      initialCost: 7.5,
+    });
+    const lime = await createItem(admin, {
+      name: 'Limón',
+      unit: 'UNIT',
+      initialStock: 50,
+      initialCost: 0.5,
+    });
+    const category = await prisma.category.create({ data: { name: 'Cervezas' } });
+    await prisma.product.create({
+      data: {
+        name: 'Gallo',
+        price: 20,
+        categoryId: category.id,
+        recipe: { create: { inventoryItemId: beer.id, quantity: 1 } },
+      },
+    });
+    // La michelada usa limón y cerveza: no da precio de venta a ninguno de los dos.
+    await prisma.product.create({
+      data: {
+        name: 'Michelada',
+        price: 35,
+        categoryId: category.id,
+        recipe: {
+          create: [
+            { inventoryItemId: lime.id, quantity: 2 },
+            { inventoryItemId: beer.id, quantity: 1 },
+          ],
+        },
+      },
+    });
+
+    const items = (await admin.get('/api/inventory/items').expect(200)).body.items;
+    const byName = (n: string) => items.find((i: { name: string }) => i.name === n);
+    expect(byName('Cerveza Gallo 350 ml')).toMatchObject({
+      purchaseCost: 7.5,
+      saleProduct: 'Gallo',
+      salePrice: 20,
+      unitProfit: 12.5,
+    });
+    expect(byName('Limón')).toMatchObject({
+      purchaseCost: 0.5,
+      saleProduct: null,
+      salePrice: null,
+      unitProfit: null,
+    });
   });
 });

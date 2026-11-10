@@ -13,7 +13,7 @@ export function PurchasesPage() {
     <div>
       <PageHeader
         title="Compras"
-        subtitle="Cada compra suma al inventario y actualiza el costo promedio."
+        subtitle="Cada compra suma al inventario y actualiza el costo de compra."
         actions={
           <Link
             to="/admin/compras/nueva"

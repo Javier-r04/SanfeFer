@@ -17,7 +17,7 @@ const yesterday = addDays(today, -1);
  * Cada Gallo cuesta Q8 (1 unidad del inventario). Además se registra una merma de 2 unidades.
  */
 async function scenario() {
-  const admin = await adminAgent();
+  const admin = await adminAgent('9999');
   await createUser({ username: 'luis', pin: '1234' });
   await createUser({ username: 'ana', pin: '2345' });
   const luis = request.agent(app);
@@ -31,7 +31,7 @@ async function scenario() {
       unit: 'UNIT',
       stock: 100,
       minStock: 24,
-      averageCost: 8,
+      purchaseCost: 8,
     },
   });
   const gallo = await prisma.product.create({
@@ -47,7 +47,7 @@ async function scenario() {
     data: { name: 'Modelo', price: 25, categoryId: category.id, active: false },
   });
 
-  await luis.post('/api/cash/open').send({ openingAmount: 100 }).expect(201);
+  await admin.post('/api/cash/open').send({ openingAmount: 100 }).expect(201);
 
   const tab1 = (await luis.post('/api/pos/tabs').send({ customerName: 'Juan' }).expect(201)).body
     .tab;
@@ -62,7 +62,7 @@ async function scenario() {
   const extraItemId = extra.body.tab.orders[1].items[0].id;
   await luis
     .post(`/api/pos/items/${extraItemId}/cancel`)
-    .send({ reason: 'Se equivocó de pedido' })
+    .send({ reason: 'Se equivocó de pedido', authorizationPin: '9999' })
     .expect(200);
   await luis
     .post(`/api/pos/tabs/${tab1.id}/payments`)

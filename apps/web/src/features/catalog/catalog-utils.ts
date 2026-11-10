@@ -16,7 +16,7 @@ export function selectionRule(min: number, max: number) {
   return `Obligatorio · elige de ${min} a ${max}`;
 }
 
-/** Costo de una receta con el costo promedio actual de cada artículo. */
+/** Costo de una receta con el costo de compra actual de cada artículo. */
 export function recipeCost(
   lines: { inventoryItemId?: number; quantity?: number }[],
   items: InventoryItemDto[],
@@ -25,7 +25,7 @@ export function recipeCost(
   return lines.reduce((sum, l) => {
     const item = l.inventoryItemId ? byId.get(l.inventoryItemId) : undefined;
     const qty = Number(l.quantity);
-    return item && Number.isFinite(qty) ? sum + qty * item.averageCost : sum;
+    return item && Number.isFinite(qty) ? sum + qty * item.purchaseCost : sum;
   }, 0);
 }
 

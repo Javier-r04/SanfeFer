@@ -9,7 +9,7 @@ import {
   openTabSchema,
   sendOrderSchema,
 } from '@sanfefer/shared';
-import { badRequest, conflict, notFound } from '../../lib/errors';
+import { AppError, badRequest, conflict, notFound } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
 import { productInclude } from '../catalog/catalog.mapper';
 import { getSettingsRow } from '../settings/settings.service';
@@ -75,9 +75,32 @@ async function nextCustomerName(tableId: number) {
   return `Cliente ${n}`;
 }
 
+/** En una misma mesa no puede haber dos cuentas abiertas con el mismo nombre. */
+async function assertNameFree(tableId: number | null, name: string, exceptTabId?: number) {
+  if (tableId === null) return;
+  const clash = await prisma.tab.findFirst({
+    where: {
+      tableId,
+      status: 'OPEN',
+      customerName: { equals: name, mode: 'insensitive' },
+      ...(exceptTabId ? { id: { not: exceptTabId } } : {}),
+    },
+    select: { customerName: true },
+  });
+  if (clash) {
+    throw new AppError(
+      409,
+      'DUPLICATE',
+      `Ya hay una cuenta a nombre de ${clash.customerName} en esta mesa.`,
+      { customerName: 'Ya hay una cuenta con ese nombre en esta mesa' },
+    );
+  }
+}
+
 export async function openTab(raw: OpenTabInput, userId: number) {
   const input = openTabSchema.parse(raw);
   if (input.tableId !== null) await assertTable(input.tableId);
+  if (input.customerName) await assertNameFree(input.tableId, input.customerName);
   const settings = await getSettingsRow();
   const tab = await prisma.tab.create({
     data: {
@@ -102,8 +125,15 @@ async function getOpenTab(id: number) {
 }
 
 export async function updateTab(id: number, input: UpdateTabInput) {
-  await getOpenTab(id);
+  const current = await getOpenTab(id);
   if (input.tableId) await assertTable(input.tableId);
+  if (input.customerName !== undefined || input.tableId !== undefined) {
+    await assertNameFree(
+      input.tableId !== undefined ? input.tableId : current.tableId,
+      input.customerName ?? current.customerName,
+      id,
+    );
+  }
   await prisma.tab.update({
     where: { id },
     data: { customerName: input.customerName, tableId: input.tableId },
@@ -229,7 +259,7 @@ export async function sendOrder(tabId: number, raw: SendOrderInput, userId: numb
     const order = await tx.order.create({ data: { tabId, createdById: userId } });
     for (const l of lines) {
       const unitCost = [...l.consumption].reduce(
-        (sum, [itemId, qty]) => sum.plus(qty.times(stock.get(itemId)!.averageCost)),
+        (sum, [itemId, qty]) => sum.plus(qty.times(stock.get(itemId)!.purchaseCost)),
         D(0),
       );
       const item = await tx.orderItem.create({
@@ -242,6 +272,8 @@ export async function sendOrder(tabId: number, raw: SendOrderInput, userId: numb
           unitPrice: l.unitPrice,
           unitCost: unitCost.toDecimalPlaces(4),
           note: l.note,
+          // Sin barra: al confirmar la orden el producto ya se considera entregado.
+          status: 'DELIVERED',
           consumption: [...l.consumption].map(([inventoryItemId, quantity]) => ({
             inventoryItemId,
             quantity: Number(quantity),

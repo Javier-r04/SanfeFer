@@ -83,15 +83,18 @@ export function ItemsView() {
     }
   };
 
-  const rowActions = (i: InventoryItemDto) => (
+  // En la tabla, "Movimiento" queda solo con ícono hasta pantallas muy anchas.
+  const rowActions = (i: InventoryItemDto, compact = false) => (
     <div className="flex justify-end gap-1">
       <Button
         variant="secondary"
         onClick={() => setMovement({ item: i, type: 'MANUAL_IN' })}
         disabled={!i.active}
+        aria-label={compact ? `Movimiento de ${i.name}` : undefined}
+        title="Movimiento"
       >
         <ArrowDownUp aria-hidden="true" className="size-4" />
-        Movimiento
+        <span className={compact ? 'hidden 2xl:inline' : undefined}>Movimiento</span>
       </Button>
       <Button
         variant="ghost"
@@ -193,16 +196,17 @@ export function ItemsView() {
       ) : (
         <>
           <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface md:block">
-            <table className="w-full min-w-[860px] border-collapse text-sm">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2/50 text-left text-muted">
-                  <th className="px-4 py-3.5 font-bold">Artículo</th>
-                  <th className="px-4 py-3.5 font-bold">Tipo</th>
-                  <th className="px-4 py-3.5 text-right font-bold">Stock</th>
-                  <th className="px-4 py-3.5 text-right font-bold">Mínimo</th>
-                  <th className="px-4 py-3.5 text-right font-bold">Costo prom.</th>
-                  <th className="px-4 py-3.5 font-bold">Estado</th>
-                  <th className="px-4 py-3.5">
+                <tr className="bg-surface-2/50 text-left whitespace-nowrap text-muted">
+                  <th className="px-3 py-3.5 font-bold">Artículo</th>
+                  <th className="px-3 py-3.5 text-right font-bold">Stock</th>
+                  <th className="px-3 py-3.5 text-right font-bold">Mínimo</th>
+                  <th className="px-3 py-3.5 text-right font-bold">Costo de compra</th>
+                  <th className="px-3 py-3.5 text-right font-bold">Precio de venta</th>
+                  <th className="px-3 py-3.5 text-right font-bold">Ganancia</th>
+                  <th className="px-3 py-3.5 font-bold">Estado</th>
+                  <th className="px-3 py-3.5">
                     <span className="sr-only">Acciones</span>
                   </th>
                 </tr>
@@ -213,16 +217,16 @@ export function ItemsView() {
                     key={i.id}
                     className={cn('border-t border-surface-2', !i.active && 'opacity-60')}
                   >
-                    <td className="px-4 py-3">
+                    <td className="min-w-44 px-3 py-3">
                       <p className="font-bold">{i.name}</p>
                       <p className="text-xs text-muted">
+                        {KIND_LABELS[i.kind]} ·{' '}
                         {i.usedIn > 0
-                          ? `En ${i.usedIn} receta${i.usedIn === 1 ? '' : 's'}`
-                          : 'Sin recetas'}
+                          ? `en ${i.usedIn} receta${i.usedIn === 1 ? '' : 's'}`
+                          : 'sin recetas'}
                         {!i.active ? ' · Inactivo' : ''}
                       </p>
                     </td>
-                    <td className="px-4 py-3 text-muted">{KIND_LABELS[i.kind]}</td>
                     <td className="tabular px-4 py-3 text-right font-extrabold">
                       {formatQty(i.stock, i.unit)}
                     </td>
@@ -230,12 +234,36 @@ export function ItemsView() {
                       {formatQty(i.minStock, i.unit)}
                     </td>
                     <td className="tabular px-4 py-3 text-right">
-                      {formatUnitCost(i.averageCost)}
+                      {formatUnitCost(i.purchaseCost)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="tabular px-4 py-3 text-right">
+                      {i.salePrice === null ? (
+                        <span
+                          className="text-muted"
+                          title="Insumo: se usa dentro de otros productos"
+                        >
+                          —
+                        </span>
+                      ) : (
+                        formatMoney(i.salePrice)
+                      )}
+                    </td>
+                    <td
+                      className={cn(
+                        'tabular px-3 py-3 text-right font-bold',
+                        i.unitProfit !== null && i.unitProfit < 0 && 'text-danger-ink',
+                      )}
+                    >
+                      {i.unitProfit === null ? (
+                        <span className="font-normal text-muted">—</span>
+                      ) : (
+                        formatMoney(i.unitProfit)
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
                       <StockBadge status={i.status} />
                     </td>
-                    <td className="px-4 py-2">{rowActions(i)}</td>
+                    <td className="w-px px-3 py-2 whitespace-nowrap">{rowActions(i, true)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -264,9 +292,24 @@ export function ItemsView() {
                   <div>
                     <p className="tabular text-xl font-extrabold">{formatQty(i.stock, i.unit)}</p>
                     <p className="text-xs text-muted">
-                      Costo prom. {formatUnitCost(i.averageCost)}
+                      Costo de compra {formatUnitCost(i.purchaseCost)}
                     </p>
                   </div>
+                  {i.salePrice !== null ? (
+                    <div className="text-right">
+                      <p className="tabular text-sm">Venta {formatMoney(i.salePrice)}</p>
+                      <p
+                        className={cn(
+                          'tabular text-xs font-bold',
+                          (i.unitProfit ?? 0) < 0 ? 'text-danger-ink' : 'text-primary-ink',
+                        )}
+                      >
+                        Ganancia {formatMoney(i.unitProfit ?? 0)}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted">Insumo</p>
+                  )}
                 </div>
                 {rowActions(i)}
               </li>

@@ -19,11 +19,29 @@ const D = (v: number) => new Prisma.Decimal(v);
 
 const usageCount = {
   _count: { select: { productComponents: true, modifierComponents: true } },
+  // Productos activos que lo venden tal cual (receta de un solo artículo, 1 unidad): dan su precio de venta.
+  productComponents: {
+    where: { quantity: 1, product: { active: true } },
+    select: {
+      product: {
+        select: { name: true, price: true, sortOrder: true, _count: { select: { recipe: true } } },
+      },
+    },
+  },
 } satisfies Prisma.InventoryItemInclude;
 
 type ItemWithUsage = Prisma.InventoryItemGetPayload<{ include: typeof usageCount }>;
-const toDto = (i: ItemWithUsage) =>
-  toInventoryItemDto(i, i._count.productComponents + i._count.modifierComponents);
+const toDto = (i: ItemWithUsage) => {
+  const sold = i.productComponents
+    .map((c) => c.product)
+    .filter((p) => p._count.recipe === 1)
+    .sort((a, b) => a.sortOrder - b.sortOrder)[0];
+  return toInventoryItemDto(
+    i,
+    i._count.productComponents + i._count.modifierComponents,
+    sold ? { name: sold.name, price: Number(sold.price) } : null,
+  );
+};
 
 export async function listItems(filters: {
   kind?: 'SUPPLY' | 'RESALE';
@@ -77,7 +95,7 @@ export async function createItem(input: InventoryItemCreateInput, userId: number
         kind: input.kind,
         unit: input.unit,
         minStock: D(input.minStock),
-        averageCost: D(initialCost),
+        purchaseCost: D(initialCost),
       },
     });
     if (initialStock > 0) {

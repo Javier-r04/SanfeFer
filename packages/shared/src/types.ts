@@ -77,7 +77,7 @@ export interface ProductDto {
   sortOrder: number;
   recipe: RecipeLineDto[];
   modifierGroupIds: number[];
-  /** Costo solo de la receta, con el costo promedio actual. */
+  /** Costo solo de la receta, con el costo de compra actual. */
   recipeCost: number;
   /** Precio más los recargos mínimos de los extras obligatorios (lo mínimo que paga el cliente). */
   basePrice: number;
@@ -118,8 +118,14 @@ export interface InventoryItemDto {
   unit: MeasureUnit;
   stock: number;
   minStock: number;
-  averageCost: number;
+  /** Costo por unidad de la última compra. */
+  purchaseCost: number;
   stockValue: number;
+  /** Producto del menú que lo vende tal cual (p. ej. "Gallo" para la cerveza); null si es insumo. */
+  saleProduct: string | null;
+  salePrice: number | null;
+  /** Precio de venta − costo de compra. */
+  unitProfit: number | null;
   status: StockStatus;
   active: boolean;
   /** Productos y extras cuya receta lo usa. */
@@ -251,6 +257,19 @@ export interface TabSummaryDto {
   openedAt: string;
 }
 
+/** Mesa tal como la administra el admin. */
+export interface DiningTableDto {
+  id: number;
+  name: string;
+  zone: string | null;
+  sortOrder: number;
+  active: boolean;
+  /** Cuentas abiertas ahora mismo en la mesa. */
+  openTabs: number;
+  /** Si alguna vez tuvo cuentas: entonces no se borra, se desactiva. */
+  hasHistory: boolean;
+}
+
 export interface FloorTableDto {
   id: number;
   name: string;
@@ -295,20 +314,6 @@ export interface TabDto extends TabSummaryDto {
   /** Otras cuentas abiertas en la misma mesa (incluida esta), para cambiar rápido. */
   siblings: { id: number; customerName: string; subtotal: number }[];
   orders: TabOrderDto[];
-}
-
-export interface BarOrderDto {
-  id: number;
-  sentAt: string;
-  tab: { id: number; customerName: string; tableName: string | null };
-  createdBy: { id: number; name: string };
-  items: OrderItemDto[];
-}
-
-export interface BarDto {
-  orders: BarOrderDto[];
-  /** Comandas con algo pendiente o en preparación. */
-  activeCount: number;
 }
 
 export interface SendOrderResult {
@@ -504,8 +509,8 @@ export interface InventoryReportRowDto {
   active: boolean;
   stock: number;
   minStock: number;
-  averageCost: number;
-  /** stock × costo promedio */
+  purchaseCost: number;
+  /** stock × costo de compra */
   value: number;
   status: StockStatus;
   /** Movimientos del rango, en unidades del insumo. */

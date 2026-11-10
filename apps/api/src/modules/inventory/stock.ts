@@ -1,7 +1,6 @@
 import { Prisma, type MovementType } from '@prisma/client';
 
 type Tx = Prisma.TransactionClient;
-const Decimal = Prisma.Decimal;
 
 /** Bloquea las filas (SELECT … FOR UPDATE) para que dos operaciones no pisen el mismo stock. */
 export async function lockInventoryItems(tx: Tx, ids: number[]) {
@@ -10,8 +9,8 @@ export async function lockInventoryItems(tx: Tx, ids: number[]) {
   await tx.$queryRaw`SELECT id FROM "InventoryItem" WHERE id IN (${Prisma.join(sorted)}) ORDER BY id FOR UPDATE`;
 }
 
-/** Entradas cuyo costo se mezcla en el costo promedio ponderado. */
-const COST_AFFECTING: MovementType[] = ['INITIAL', 'PURCHASE', 'MANUAL_IN'];
+/** Entradas que fijan el costo de compra del artículo (el de la más reciente). */
+const COST_SETTING: MovementType[] = ['INITIAL', 'PURCHASE', 'MANUAL_IN'];
 
 export interface StockChange {
   itemId: number;
@@ -19,7 +18,7 @@ export interface StockChange {
   delta: Prisma.Decimal;
   type: MovementType;
   userId: number;
-  /** Costo por unidad de la entrada; si falta se registra el costo promedio actual. */
+  /** Costo por unidad de la entrada; si falta se registra el costo de compra actual. */
   unitCost?: Prisma.Decimal | null;
   reason?: string | null;
   purchaseItemId?: number;
@@ -35,40 +34,42 @@ export async function applyStockChange(tx: Tx, change: StockChange) {
   const item = await tx.inventoryItem.findUniqueOrThrow({ where: { id: change.itemId } });
 
   const stockAfter = item.stock.plus(change.delta);
-  let averageCost = item.averageCost;
-  if (change.type === 'PURCHASE_VOID' && change.unitCost != null && stockAfter.gt(0)) {
-    // Deshace el aporte de la compra anulada al promedio: (valor actual − valor de la compra) / stock restante.
-    const reverted = item.stock
-      .times(item.averageCost)
-      .plus(change.delta.times(change.unitCost))
-      .div(stockAfter)
-      .toDecimalPlaces(4);
-    if (reverted.gte(0)) averageCost = reverted;
-  } else if (
-    change.delta.gt(0) &&
-    change.unitCost != null &&
-    COST_AFFECTING.includes(change.type)
-  ) {
-    // El stock negativo (ventas sin existencia) no debe arrastrar el promedio.
-    const previous = Decimal.max(item.stock, 0);
-    const total = previous.plus(change.delta);
-    averageCost = previous
-      .times(item.averageCost)
-      .plus(change.delta.times(change.unitCost))
-      .div(total)
-      .toDecimalPlaces(4);
+  let purchaseCost = item.purchaseCost;
+  if (change.type === 'PURCHASE_VOID') {
+    // Al anular una compra, el costo vuelve al de la entrada vigente más reciente.
+    const previous = await tx.inventoryMovement.findFirst({
+      where: {
+        inventoryItemId: item.id,
+        type: { in: COST_SETTING },
+        unitCost: { not: null },
+        // Entradas sin compra (inicial, manual) o de compras vigentes; nunca la línea que se anula.
+        // (Un NOT sobre purchaseItemId descartaría también las filas sin compra: en SQL, NULL <> x no es verdadero.)
+        OR: [
+          { purchaseItemId: null },
+          {
+            purchaseItemId: change.purchaseItemId ? { not: change.purchaseItemId } : undefined,
+            purchaseItem: { purchase: { status: 'RECEIVED' } },
+          },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    if (previous?.unitCost) purchaseCost = previous.unitCost;
+  } else if (change.delta.gt(0) && change.unitCost != null && COST_SETTING.includes(change.type)) {
+    // Costo de compra = lo que se pagó en la última entrada con costo.
+    purchaseCost = change.unitCost.toDecimalPlaces(4);
   }
 
   const updated = await tx.inventoryItem.update({
     where: { id: item.id },
-    data: { stock: stockAfter, averageCost },
+    data: { stock: stockAfter, purchaseCost },
   });
   const movement = await tx.inventoryMovement.create({
     data: {
       inventoryItemId: item.id,
       type: change.type,
       quantity: change.delta,
-      unitCost: change.unitCost ?? item.averageCost,
+      unitCost: change.unitCost ?? item.purchaseCost,
       stockAfter,
       reason: change.reason ?? null,
       userId: change.userId,

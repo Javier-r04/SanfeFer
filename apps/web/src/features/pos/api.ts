@@ -1,5 +1,4 @@
 import type {
-  BarDto,
   CancelItemInput,
   MoveItemsInput,
   PaymentInput,
@@ -8,7 +7,6 @@ import type {
   FloorDto,
   MenuCategory,
   OpenTabInput,
-  OrderItemDto,
   SendOrderInput,
   SendOrderResult,
   TabDto,
@@ -41,15 +39,15 @@ export const useTab = (id: number) =>
     refetchInterval: POLL_MS,
   });
 
-export const useBar = (enabled = true) =>
+/** Para el cobro: si hay una caja abierta (el vendedor no ve sus montos). */
+export const useCashStatus = () =>
   useQuery({
-    queryKey: ['pos', 'bar'],
-    queryFn: () => api<BarDto>('/pos/bar'),
-    refetchInterval: POLL_MS,
-    enabled,
+    queryKey: ['pos', 'cash-status'],
+    queryFn: async () => (await api<{ open: boolean }>('/pos/cash-status')).open,
+    refetchInterval: 15_000,
   });
 
-/** Toda acción del POS refresca mesas, cuentas y barra (y el stock del admin). */
+/** Toda acción del POS refresca mesas y cuentas (y el stock del admin). */
 function useInvalidate() {
   const qc = useQueryClient();
   return () =>
@@ -94,29 +92,11 @@ export function useSendOrder() {
   });
 }
 
-export function useSetItemStatus() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'PENDING' | 'PREPARING' | 'DELIVERED' }) =>
-      api<{ item: OrderItemDto }>(`/pos/items/${id}/status`, { method: 'PATCH', body: { status } }),
-    onSuccess: invalidate,
-  });
-}
-
 export function useCancelItem() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: CancelItemInput }) =>
       api<{ tab: TabDto }>(`/pos/items/${id}/cancel`, { method: 'POST', body: input }),
-    onSuccess: invalidate,
-  });
-}
-
-export function useAdvanceOrder() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: ({ id, to }: { id: number; to: 'PREPARING' | 'DELIVERED' }) =>
-      api<{ updated: number }>(`/pos/orders/${id}/advance`, { method: 'POST', body: { to } }),
     onSuccess: invalidate,
   });
 }
