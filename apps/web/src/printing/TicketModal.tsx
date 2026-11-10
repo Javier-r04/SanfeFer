@@ -1,4 +1,4 @@
-import { Download, Printer, Usb } from 'lucide-react';
+import { Download, FileDown, Printer, Usb } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -7,7 +7,7 @@ import { ErrorState, LoadingState } from '@/components/ui/States';
 import { useTicket } from '@/features/pos/api';
 import { errorMessage } from '@/lib/api';
 import { toast } from '@/stores/toast';
-import { canPrintSerial, downloadEscPos, printInBrowser, printSerial } from './print';
+import { canPrintSerial, downloadEscPos, downloadPdf, printInBrowser, printSerial } from './print';
 import { TicketPreview } from './TicketPreview';
 
 export function TicketModal({ tabId, onClose }: { tabId: number | null; onClose: () => void }) {
@@ -16,6 +16,7 @@ export function TicketModal({ tabId, onClose }: { tabId: number | null; onClose:
   const [chosenWidth, setWidth] = useState<58 | 80 | null>(null);
   const width = chosenWidth ?? ticket.data?.paperWidth ?? 80;
   const [sending, setSending] = useState(false);
+  const [makingPdf, setMakingPdf] = useState(false);
 
   if (tabId === null) return null;
   const doc = ticket.data?.document;
@@ -33,6 +34,19 @@ export function TicketModal({ tabId, onClose }: { tabId: number | null; onClose:
     }
   };
 
+  const pdf = async () => {
+    if (!doc) return;
+    setMakingPdf(true);
+    try {
+      const label = doc.kind === 'PRECUENTA' ? 'pre-cuenta' : 'comprobante';
+      await downloadPdf(doc, width, `${label}-${tabId}`);
+    } catch (e) {
+      toast.error(`No se pudo crear el PDF. ${errorMessage(e)}`);
+    } finally {
+      setMakingPdf(false);
+    }
+  };
+
   return (
     <Modal
       open
@@ -42,9 +56,23 @@ export function TicketModal({ tabId, onClose }: { tabId: number | null; onClose:
       footer={
         doc ? (
           <div className="flex w-full flex-wrap gap-2">
-            <Button size="lg" className="flex-1" onClick={() => printInBrowser(doc, width)}>
+            <Button
+              size="lg"
+              className="flex-1 whitespace-nowrap"
+              onClick={() => printInBrowser(doc, width)}
+            >
               <Printer aria-hidden="true" className="size-5" />
               Imprimir
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="flex-1 whitespace-nowrap"
+              loading={makingPdf}
+              onClick={() => void pdf()}
+            >
+              <FileDown aria-hidden="true" className="size-5" />
+              Descargar PDF
             </Button>
             {canPrintSerial() ? (
               <Button

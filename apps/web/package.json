@@ -17,6 +17,7 @@
     "@sanfefer/shared": "*",
     "@tanstack/react-query": "^5.90.0",
     "clsx": "^2.1.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.577.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
