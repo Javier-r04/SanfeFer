@@ -34,7 +34,15 @@ async function setup({ openCash = true } = {}) {
   });
   const table = await prisma.diningTable.create({ data: { name: 'Mesa 1' } });
 
-  if (openCash) await seller.post('/api/cash/open').send({ openingAmount: 200 }).expect(201);
+  if (openCash) {
+    // Solo el admin abre la caja; el vendedor cobra.
+    const admin = request.agent(app);
+    await admin
+      .post('/api/auth/login/password')
+      .send({ username: 'admin', password: 'x12345678' })
+      .expect(200);
+    await admin.post('/api/cash/open').send({ openingAmount: 200 }).expect(201);
+  }
   const tab = (await seller.post('/api/pos/tabs').send({ tableId: table.id }).expect(201)).body.tab;
   await seller
     .post(`/api/pos/tabs/${tab.id}/orders`)
@@ -110,7 +118,7 @@ describe('cobro', () => {
       .expect(409);
     expect(res.body.error).toMatchObject({
       code: 'CASH_CLOSED',
-      message: 'No hay una caja abierta. Abre la caja antes de cobrar.',
+      message: 'La caja está cerrada. Pide al administrador que la abra para poder cobrar.',
     });
   });
 
@@ -188,7 +196,7 @@ describe('cobro', () => {
     await seller.delete(`/api/pos/payments/${tab.billing.payments[0].id}`).expect(200);
     await seller
       .post(`/api/pos/items/${michelada.id}/cancel`)
-      .send({ reason: 'Cambió de opinión' })
+      .send({ reason: 'Cambió de opinión', authorizationPin: '9999' })
       .expect(200);
   });
 

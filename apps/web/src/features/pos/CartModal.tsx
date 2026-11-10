@@ -42,7 +42,7 @@ export function CartModal({
             loading={sending}
             disabled={!lines.length}
           >
-            Enviar a barra
+            Confirmar orden
           </Button>
         </>
       }

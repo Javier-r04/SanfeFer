@@ -251,6 +251,19 @@ export interface TabSummaryDto {
   openedAt: string;
 }
 
+/** Mesa tal como la administra el admin. */
+export interface DiningTableDto {
+  id: number;
+  name: string;
+  zone: string | null;
+  sortOrder: number;
+  active: boolean;
+  /** Cuentas abiertas ahora mismo en la mesa. */
+  openTabs: number;
+  /** Si alguna vez tuvo cuentas: entonces no se borra, se desactiva. */
+  hasHistory: boolean;
+}
+
 export interface FloorTableDto {
   id: number;
   name: string;
@@ -295,20 +308,6 @@ export interface TabDto extends TabSummaryDto {
   /** Otras cuentas abiertas en la misma mesa (incluida esta), para cambiar rápido. */
   siblings: { id: number; customerName: string; subtotal: number }[];
   orders: TabOrderDto[];
-}
-
-export interface BarOrderDto {
-  id: number;
-  sentAt: string;
-  tab: { id: number; customerName: string; tableName: string | null };
-  createdBy: { id: number; name: string };
-  items: OrderItemDto[];
-}
-
-export interface BarDto {
-  orders: BarOrderDto[];
-  /** Comandas con algo pendiente o en preparación. */
-  activeCount: number;
 }
 
 export interface SendOrderResult {

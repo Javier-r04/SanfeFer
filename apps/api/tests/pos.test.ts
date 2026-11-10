@@ -193,13 +193,14 @@ describe('enviar a barra', () => {
       unitPrice: 38,
       lineTotal: 76,
       note: 'Poco hielo',
-      status: 'PENDING',
+      // Sin barra: confirmar la orden la deja entregada.
+      status: 'DELIVERED',
     });
     expect(line.modifiers.map((m: { optionName: string }) => m.optionName)).toEqual([
       'Gallo',
       'Tajín',
     ]);
-    expect(res.body.tab).toMatchObject({ subtotal: 76, itemCount: 2, counts: { pending: 2 } });
+    expect(res.body.tab).toMatchObject({ subtotal: 76, itemCount: 2, counts: { delivered: 2 } });
     expect(res.body.stockWarnings).toEqual([]);
 
     expect(await stock(ids.limon)).toBe(6);
@@ -275,36 +276,19 @@ describe('enviar a barra', () => {
   });
 });
 
-describe('barra', () => {
-  it('muestra las comandas y avanza sus estados', async () => {
+describe('sin barra', () => {
+  it('confirmar la orden la deja entregada y ya no hay pantalla de barra', async () => {
     const { seller, table, michelada, options } = await setup();
     const tab = await openTab(seller, { tableId: table.id, customerName: 'Andrea' });
-    const sent = await seller
+    await seller
       .post(`/api/pos/tabs/${tab.id}/orders`)
       .send({
         items: [{ productId: michelada.id, quantity: 1, modifierOptionIds: [options.gallo] }],
       })
       .expect(201);
-
-    const bar = await seller.get('/api/pos/bar').expect(200);
-    expect(bar.body.activeCount).toBe(1);
-    expect(bar.body.orders[0].tab).toMatchObject({ customerName: 'Andrea', tableName: 'Mesa 4' });
-
-    await seller
-      .post(`/api/pos/orders/${sent.body.orderId}/advance`)
-      .send({ to: 'PREPARING' })
-      .expect(200);
-    await seller
-      .post(`/api/pos/orders/${sent.body.orderId}/advance`)
-      .send({ to: 'DELIVERED' })
-      .expect(200);
-    const after = await seller.get('/api/pos/bar').expect(200);
-    expect(after.body.activeCount).toBe(0);
-    // Entregado recientemente: sigue visible en la columna "Entregado".
-    expect(after.body.orders[0].items[0].status).toBe('DELIVERED');
-
     const detail = await seller.get(`/api/pos/tabs/${tab.id}`).expect(200);
     expect(detail.body.tab.counts).toEqual({ pending: 0, preparing: 0, delivered: 1 });
+    await seller.get('/api/pos/bar').expect(404);
   });
 });
 
@@ -328,16 +312,16 @@ describe('cancelar productos', () => {
     };
   }
 
-  it('cancelar uno de dos pendientes divide la línea y devuelve su inventario', async () => {
+  it('cancelar uno de dos divide la línea y devuelve su inventario', async () => {
     const { seller, ids, itemId } = await sendTwo();
     expect(await stock(ids.gallo)).toBe(22);
     const res = await seller
       .post(`/api/pos/items/${itemId}/cancel`)
-      .send({ reason: 'Cambió de opinión', quantity: 1 })
+      .send({ reason: 'Cambió de opinión', quantity: 1, authorizationPin: '9999' })
       .expect(200);
     const items = res.body.tab.orders[0].items;
     expect(items.map((i: { quantity: number; status: string }) => [i.quantity, i.status])).toEqual([
-      [1, 'PENDING'],
+      [1, 'DELIVERED'],
       [1, 'CANCELLED'],
     ]);
     expect(res.body.tab.subtotal).toBe(35);
@@ -345,15 +329,18 @@ describe('cancelar productos', () => {
     expect(await stock(ids.limon)).toBe(8);
   });
 
-  it('un vendedor necesita el PIN de un admin para cancelar algo ya preparado', async () => {
-    const { seller, ids, itemId, orderId } = await sendTwo();
-    await seller.post(`/api/pos/orders/${orderId}/advance`).send({ to: 'PREPARING' }).expect(200);
+  it('solo un admin cancela: el vendedor necesita su PIN; si ya se preparó queda como merma', async () => {
+    const { seller, ids, itemId } = await sendTwo();
 
     const noPin = await seller
       .post(`/api/pos/items/${itemId}/cancel`)
       .send({ reason: 'Se derramó' })
       .expect(403);
-    expect(noPin.body.error.code).toBe('AUTHORIZATION_REQUIRED');
+    expect(noPin.body.error).toMatchObject({
+      code: 'AUTHORIZATION_REQUIRED',
+      message:
+        'Solo un administrador cancela productos: un administrador debe autorizar con su PIN.',
+    });
     const wrong = await seller
       .post(`/api/pos/items/${itemId}/cancel`)
       .send({ reason: 'Se derramó', authorizationPin: '0000' })
@@ -362,7 +349,7 @@ describe('cancelar productos', () => {
 
     await seller
       .post(`/api/pos/items/${itemId}/cancel`)
-      .send({ reason: 'Se derramó', authorizationPin: '9999' })
+      .send({ reason: 'Se derramó', authorizationPin: '9999', wasted: true })
       .expect(200);
     const item = await prisma.orderItem.findUniqueOrThrow({
       where: { id: itemId },
@@ -382,11 +369,12 @@ describe('cancelar productos', () => {
     const { seller, itemId } = await sendTwo();
     const tooMany = await seller
       .post(`/api/pos/items/${itemId}/cancel`)
-      .send({ reason: 'Error', quantity: 3 })
+      .send({ reason: 'Error', quantity: 3, authorizationPin: '9999' })
       .expect(400);
     expect(tooMany.body.error.message).toBe('Solo hay 2 en esta línea.');
-    await seller.post(`/api/pos/items/${itemId}/cancel`).send({ reason: 'Error' }).expect(200);
-    await seller.post(`/api/pos/items/${itemId}/cancel`).send({ reason: 'Error' }).expect(409);
+    const pin = { reason: 'Error', authorizationPin: '9999' };
+    await seller.post(`/api/pos/items/${itemId}/cancel`).send(pin).expect(200);
+    await seller.post(`/api/pos/items/${itemId}/cancel`).send(pin).expect(409);
   });
 });
 

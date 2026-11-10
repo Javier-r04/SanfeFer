@@ -1,7 +1,6 @@
-import { CupSoda, LayoutGrid, LogOut, Settings, Wallet } from 'lucide-react';
+import { LayoutGrid, LogOut, Settings, Wallet } from 'lucide-react';
 import { NavLink, Outlet, useMatches } from 'react-router';
 import { useLogout, useSession } from '@/features/auth/api';
-import { useBar } from '@/features/pos/api';
 import { cn } from '@/lib/cn';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -14,11 +13,9 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 export function PosLayout() {
   const { data: user } = useSession();
   const logout = useLogout();
-  const bar = useBar();
   const hideNav = useMatches().some(
     (m) => (m.handle as { hideNav?: boolean } | undefined)?.hideNav,
   );
-  const active = bar.data?.activeCount ?? 0;
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row-reverse">
@@ -37,25 +34,18 @@ export function PosLayout() {
           <LayoutGrid aria-hidden="true" className="size-6" />
           Mesas
         </NavLink>
-        <NavLink to="/pos/barra" className={linkClass}>
-          {active ? (
-            <span className="tabular absolute top-2 left-[55%] grid h-5 min-w-5 place-items-center rounded-full bg-warning px-1 text-[11px] font-extrabold text-on-warning md:top-3">
-              {active}
-              <span className="sr-only"> comandas activas</span>
-            </span>
-          ) : null}
-          <CupSoda aria-hidden="true" className="size-6" />
-          Barra
-        </NavLink>
-        <NavLink to="/pos/caja" className={linkClass}>
-          <Wallet aria-hidden="true" className="size-6" />
-          Caja
-        </NavLink>
+        {/* La caja solo la ve y la maneja el administrador. */}
         {user?.role === 'ADMIN' ? (
-          <NavLink to="/admin" className={linkClass}>
-            <Settings aria-hidden="true" className="size-6" />
-            Admin
-          </NavLink>
+          <>
+            <NavLink to="/pos/caja" className={linkClass}>
+              <Wallet aria-hidden="true" className="size-6" />
+              Caja
+            </NavLink>
+            <NavLink to="/admin" className={linkClass}>
+              <Settings aria-hidden="true" className="size-6" />
+              Admin
+            </NavLink>
+          </>
         ) : null}
         <button
           type="button"

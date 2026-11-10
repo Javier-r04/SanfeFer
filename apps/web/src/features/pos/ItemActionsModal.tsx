@@ -8,8 +8,8 @@ import { ApiError, errorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/format';
 import { toast } from '@/stores/toast';
-import { useCancelItem, useSetItemStatus } from './api';
-import { ItemStatusBadge, Stepper } from './components';
+import { useCancelItem } from './api';
+import { Stepper } from './components';
 
 const REASONS = [
   'El cliente cambió de opinión',
@@ -18,7 +18,7 @@ const REASONS = [
   'Tardó demasiado',
 ];
 
-/** Acciones sobre un producto ya enviado: marcar entregado o cancelar (total o parcial). */
+/** Cancelar un producto ya confirmado (total o parcial). Solo un administrador puede hacerlo. */
 export function ItemActionsModal({
   item,
   onClose,
@@ -27,12 +27,12 @@ export function ItemActionsModal({
   onClose: () => void;
 }) {
   const { data: user } = useSession();
-  const setStatus = useSetItemStatus();
   const cancel = useCancelItem();
   const [mode, setMode] = useState<'menu' | 'cancel'>('menu');
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState('');
   const [pin, setPin] = useState('');
+  const [wasted, setWasted] = useState(false);
   const [errors, setErrors] = useState<{ reason?: string; pin?: string }>({});
 
   useEffect(() => {
@@ -41,24 +41,13 @@ export function ItemActionsModal({
     setQuantity(item.quantity);
     setReason('');
     setPin('');
+    setWasted(false);
     setErrors({});
   }, [item]);
 
   if (!item) return null;
-  const prepared = item.status !== 'PENDING';
-  const needsPin = prepared && user?.role !== 'ADMIN';
-
-  const markDelivered = () =>
-    setStatus.mutate(
-      { id: item.id, status: 'DELIVERED' },
-      {
-        onSuccess: () => {
-          toast.success(`${item.productName} entregado.`);
-          onClose();
-        },
-        onError: (e) => toast.error(errorMessage(e)),
-      },
-    );
+  // Un vendedor puede pedir la cancelación, pero la autoriza un administrador con su PIN.
+  const needsPin = user?.role !== 'ADMIN';
 
   const confirmCancel = () => {
     const next: typeof errors = {};
@@ -69,14 +58,17 @@ export function ItemActionsModal({
     cancel.mutate(
       {
         id: item.id,
-        input: { reason: reason.trim(), quantity, authorizationPin: needsPin ? pin : undefined },
+        input: {
+          reason: reason.trim(),
+          quantity,
+          wasted,
+          authorizationPin: needsPin ? pin : undefined,
+        },
       },
       {
         onSuccess: () => {
           toast.success(
-            prepared
-              ? `Cancelado. Como ya se había preparado, se registró como merma.`
-              : `Cancelado. El inventario se devolvió.`,
+            wasted ? 'Cancelado. Se registró como merma.' : 'Cancelado. El inventario se devolvió.',
           );
           onClose();
         },
@@ -121,13 +113,13 @@ export function ItemActionsModal({
       {mode === 'menu' ? (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <ItemStatusBadge status={item.status} />
+            <span className="text-muted">Total de la línea</span>
             <span className="tabular text-lg font-extrabold">{formatMoney(item.lineTotal)}</span>
           </div>
-          {item.status !== 'DELIVERED' ? (
-            <Button size="xl" onClick={markDelivered} loading={setStatus.isPending}>
-              Marcar como entregado
-            </Button>
+          {needsPin ? (
+            <p className="text-sm text-muted">
+              Solo un administrador puede cancelar: te pedirá su PIN.
+            </p>
           ) : null}
           <Button
             variant="outline"
@@ -140,12 +132,37 @@ export function ItemActionsModal({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {prepared ? (
-            <p className="rounded-xl bg-warning-soft px-3 py-2.5 text-sm font-semibold text-warning-ink">
-              Ya se está preparando o se entregó: el inventario no se devuelve y queda como merma.
-              {needsPin ? ' Necesitas el PIN de un administrador.' : ''}
-            </p>
-          ) : null}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1.5 font-bold">¿Ya se preparó?</legend>
+            {[
+              {
+                value: false,
+                label: 'No, vuelve al inventario',
+                hint: 'Se tomó por error o no se hizo.',
+              },
+              { value: true, label: 'Sí, se desperdició', hint: 'Se registra como merma.' },
+            ].map((o) => (
+              <label
+                key={String(o.value)}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-xl border-[1.5px] px-3.5 py-3',
+                  wasted === o.value ? 'border-text bg-surface-2' : 'border-border',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="wasted"
+                  className="mt-1 size-4 accent-[var(--primary)]"
+                  checked={wasted === o.value}
+                  onChange={() => setWasted(o.value)}
+                />
+                <span>
+                  <span className="block font-bold">{o.label}</span>
+                  <span className="block text-sm text-muted">{o.hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
           {item.quantity > 1 ? (
             <div className="flex items-center justify-between gap-3">
               <span className="font-bold">¿Cuántos cancelar?</span>

@@ -14,8 +14,9 @@ import * as service from './cash.service';
 export const cashRouter = Router();
 const admin = requireRole('ADMIN');
 
-// Vendedores: abrir, mover y cerrar la caja del turno. Admin: además historial y cierre del día.
-cashRouter.use(requireAuth);
+// Solo el administrador ve y maneja la caja. Los vendedores cobran, pero no ven montos de caja:
+// el POS solo pregunta si hay una abierta (/pos/cash-status).
+cashRouter.use(requireAuth, admin);
 
 cashRouter.get('/current', async (_req: Request, res: Response) => {
   res.json({ session: await service.getCurrent() });
@@ -33,13 +34,13 @@ cashRouter.post(
 cashRouter.post('/close', validateBody(closeCashSchema), async (req: Request, res: Response) => {
   res.json({ session: await service.closeCash(req.body, currentUser(req).id) });
 });
-cashRouter.get('/daily', admin, async (req: Request, res: Response) => {
+cashRouter.get('/daily', async (req: Request, res: Response) => {
   const { date } = parseQuery(dailyQuerySchema, req);
   res.json({ daily: await service.getDaily(date) });
 });
-cashRouter.get('/sessions', admin, async (req: Request, res: Response) => {
+cashRouter.get('/sessions', async (req: Request, res: Response) => {
   res.json(await service.listSessions(parseQuery(cashSessionsQuerySchema, req)));
 });
-cashRouter.get('/sessions/:id', admin, async (req: Request, res: Response) => {
+cashRouter.get('/sessions/:id', async (req: Request, res: Response) => {
   res.json({ session: await service.getSession(parseId(req)) });
 });

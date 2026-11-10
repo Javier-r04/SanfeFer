@@ -1,20 +1,13 @@
-import { Prisma, type OrderItemStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { computeTabTotals, fromCents, toCents } from '@sanfefer/shared';
-import type { AuthUser, BarDto, CancelItemInput } from '@sanfefer/shared';
+import type { AuthUser, CancelItemInput } from '@sanfefer/shared';
 import { resolveAuthorizer } from '../../lib/authorization';
 import { badRequest, conflict, notFound } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
 import { applyStockChange, lockInventoryItems } from '../inventory/stock';
-import {
-  computeBilling,
-  itemInclude,
-  lineTotal,
-  paymentInclude,
-  toOrderItemDto,
-} from './pos.mapper';
+import { computeBilling, lineTotal, paymentInclude } from './pos.mapper';
 
 const D = (v: number | string) => new Prisma.Decimal(v);
-const RECENT_DELIVERED_MS = 15 * 60 * 1000;
 
 async function getItemOrThrow(id: number) {
   const item = await prisma.orderItem.findUnique({ where: { id }, include: { tab: true } });
@@ -22,74 +15,11 @@ async function getItemOrThrow(id: number) {
   return item;
 }
 
-export async function setItemStatus(id: number, status: Exclude<OrderItemStatus, 'CANCELLED'>) {
-  const item = await getItemOrThrow(id);
-  if (item.status === 'CANCELLED') throw conflict('Este producto fue cancelado.');
-  if (item.tab.status === 'CANCELLED') throw conflict('La cuenta fue cancelada.');
-  const updated = await prisma.orderItem.update({
-    where: { id },
-    data: { status, statusChangedAt: new Date() },
-    include: itemInclude,
-  });
-  return toOrderItemDto(updated);
-}
-
-/** "Empezar" (pendientes → preparando) o "Entregar" (todo lo vigente → entregado) en una comanda. */
-export async function advanceOrder(orderId: number, to: 'PREPARING' | 'DELIVERED') {
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order) throw notFound('La comanda no existe.');
-  const from: OrderItemStatus[] = to === 'PREPARING' ? ['PENDING'] : ['PENDING', 'PREPARING'];
-  const { count } = await prisma.orderItem.updateMany({
-    where: { orderId, status: { in: from } },
-    data: { status: to, statusChangedAt: new Date() },
-  });
-  return { updated: count };
-}
-
-export async function getBar(): Promise<BarDto> {
-  const recent = new Date(Date.now() - RECENT_DELIVERED_MS);
-  const orders = await prisma.order.findMany({
-    where: {
-      tab: { status: { not: 'CANCELLED' } },
-      items: {
-        some: {
-          OR: [
-            { status: { in: ['PENDING', 'PREPARING'] } },
-            { status: 'DELIVERED', statusChangedAt: { gte: recent } },
-          ],
-        },
-      },
-    },
-    include: {
-      tab: { include: { table: { select: { name: true } } } },
-      createdBy: { select: { id: true, name: true } },
-      items: {
-        where: { status: { not: 'CANCELLED' } },
-        include: itemInclude,
-        orderBy: { id: 'asc' },
-      },
-    },
-    orderBy: { sentAt: 'asc' },
-  });
-  return {
-    orders: orders.map((o) => ({
-      id: o.id,
-      sentAt: o.sentAt.toISOString(),
-      tab: { id: o.tab.id, customerName: o.tab.customerName, tableName: o.tab.table?.name ?? null },
-      createdBy: o.createdBy,
-      items: o.items.map(toOrderItemDto),
-    })),
-    activeCount: orders.filter((o) =>
-      o.items.some((i) => i.status === 'PENDING' || i.status === 'PREPARING'),
-    ).length,
-  };
-}
-
 type Consumption = { inventoryItemId: number; quantity: number }[];
 
 /**
- * Cancela una línea o parte de ella. Si aún estaba pendiente, el inventario vuelve;
- * si ya se preparó, se registra como merma (autorizada por un admin).
+ * Cancela una línea o parte de ella. Solo un administrador cancela (un vendedor necesita su PIN).
+ * El inventario vuelve, salvo que el producto ya se haya preparado: entonces queda como merma.
  */
 export async function cancelItem(id: number, input: CancelItemInput, user: AuthUser) {
   const item = await getItemOrThrow(id);
@@ -121,16 +51,10 @@ export async function cancelItem(id: number, input: CancelItemInput, user: AuthU
     }
   }
 
-  const prepared = item.status !== 'PENDING';
-  const authorizedBy = prepared
-    ? (
-        await resolveAuthorizer(
-          user,
-          input.authorizationPin,
-          'Este producto ya se está preparando o se entregó',
-        )
-      ).id
-    : null;
+  const prepared = input.wasted === true;
+  const authorizedBy = (
+    await resolveAuthorizer(user, input.authorizationPin, 'Solo un administrador cancela productos')
+  ).id;
   const consumption = (item.consumption as Consumption | null) ?? [];
 
   await prisma.$transaction(async (tx) => {

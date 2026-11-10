@@ -1,7 +1,7 @@
 import type { FloorTableDto, TabSummaryDto } from '@sanfefer/shared';
 import { Plus, UserRound, UsersRound } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
@@ -18,7 +18,6 @@ import { timeAgo, useNow } from './pos-utils';
 function tableTotals(t: FloorTableDto) {
   return {
     subtotal: t.tabs.reduce((s, x) => s + x.subtotal, 0),
-    inBar: t.tabs.reduce((s, x) => s + x.counts.pending + x.counts.preparing, 0),
     openedAt: t.tabs.map((x) => x.openedAt).sort()[0],
   };
 }
@@ -113,9 +112,6 @@ function WalkInRow({ tab, now, onOpen }: { tab: TabSummaryDto; now: number; onOp
         <span className="block truncate font-bold">{tab.customerName}</span>
         <span className="block text-xs text-muted">
           {tab.itemCount} producto{tab.itemCount === 1 ? '' : 's'} · {timeAgo(tab.openedAt, now)}
-          {tab.counts.pending + tab.counts.preparing
-            ? ` · ${tab.counts.pending + tab.counts.preparing} en barra`
-            : ''}
         </span>
       </span>
       <span className="tabular font-extrabold">{formatMoney(tab.subtotal)}</span>
@@ -192,7 +188,7 @@ export function FloorPage() {
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
             {tables.map((t) => {
               const busy = t.tabs.length > 0;
-              const { subtotal, inBar, openedAt } = tableTotals(t);
+              const { subtotal, openedAt } = tableTotals(t);
               return (
                 <button
                   key={t.id}
@@ -230,7 +226,7 @@ export function FloorPage() {
                         {formatMoney(subtotal)}
                       </span>
                       <span className="truncate text-[11px] font-semibold">
-                        {inBar ? `${inBar} en barra` : openedAt ? timeAgo(openedAt, now) : ''}
+                        {openedAt ? timeAgo(openedAt, now) : ''}
                       </span>
                     </span>
                   ) : (
@@ -265,9 +261,16 @@ export function FloorPage() {
               Nuevo cliente sin mesa
             </button>
           </section>
-          {floor.data.tables.length === 0 && floor.data.walkIns.length === 0 ? (
-            <p className="flex items-center gap-2 text-sm text-muted">
+          {floor.data.tables.length === 0 ? (
+            <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
               <UserRound aria-hidden="true" className="size-4" /> No hay mesas configuradas.
+              {user?.role === 'ADMIN' ? (
+                <Link to="/admin/mesas" className="font-bold text-primary-ink underline">
+                  Crear mesas
+                </Link>
+              ) : (
+                <span>El administrador las crea en Admin → Mesas.</span>
+              )}
             </p>
           ) : null}
         </div>

@@ -14,6 +14,7 @@ import { posRouter } from './modules/pos/pos.routes';
 import { purchasesRouter } from './modules/purchases/purchases.routes';
 import { settingsRouter } from './modules/settings/settings.routes';
 import { reportsRouter } from './modules/reports/reports.routes';
+import { tablesRouter } from './modules/tables/tables.routes';
 import { usersRouter } from './modules/users/users.routes';
 
 export function createApp() {
@@ -62,6 +63,7 @@ export function createApp() {
   api.use('/cash', cashRouter);
   api.use('/settings', settingsRouter);
   api.use('/reports', reportsRouter);
+  api.use('/tables', tablesRouter);
 
   app.use('/api', api);
   app.use(notFoundHandler);

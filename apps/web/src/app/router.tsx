@@ -6,7 +6,6 @@ import { GuestOnly, RequireAuth, RootRedirect } from '@/features/auth/guards';
 import { PinLoginPage } from '@/features/auth/PinLoginPage';
 import { NotFoundPage } from '@/features/common/NotFoundPage';
 import { RouteError } from '@/features/common/RouteError';
-import { BarPage } from '@/features/pos/BarPage';
 import { FloorPage } from '@/features/pos/FloorPage';
 import { OrderPage } from '@/features/pos/OrderPage';
 import { PaymentPage } from '@/features/pos/PaymentPage';
@@ -52,11 +51,17 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <FloorPage /> },
-          { path: 'barra', element: <BarPage /> },
           { path: 'cuentas/:tabId', element: <TabPage />, handle: { hideNav: true } },
           { path: 'cuentas/:tabId/orden', element: <OrderPage />, handle: { hideNav: true } },
           { path: 'cuentas/:tabId/cobro', element: <PaymentPage />, handle: { hideNav: true } },
-          { path: 'caja', element: <PosCashPage /> },
+          {
+            path: 'caja',
+            element: (
+              <RequireAuth roles={['ADMIN']}>
+                <PosCashPage />
+              </RequireAuth>
+            ),
+          },
         ],
       },
       {
@@ -87,6 +92,10 @@ export const router = createBrowserRouter([
           {
             path: 'compras/nueva',
             lazy: page(() => import('@/features/purchases/NewPurchasePage'), 'NewPurchasePage'),
+          },
+          {
+            path: 'mesas',
+            lazy: page(() => import('@/features/tables/TablesPage'), 'TablesPage'),
           },
           {
             path: 'caja',

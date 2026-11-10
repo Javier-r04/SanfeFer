@@ -33,8 +33,8 @@ export async function createUser(opts: {
 }
 
 /** Agente con la cookie de sesión de un admin ya iniciada. */
-export async function adminAgent() {
-  await createUser({ username: 'admin', role: 'ADMIN', password: 'Sanfefer2026' });
+export async function adminAgent(pin?: string) {
+  await createUser({ username: 'admin', role: 'ADMIN', password: 'Sanfefer2026', pin });
   const agent = request.agent(app);
   await agent
     .post('/api/auth/login/password')

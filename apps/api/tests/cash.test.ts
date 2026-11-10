@@ -15,22 +15,39 @@ async function seller() {
 }
 
 describe('caja', () => {
-  it('solo una caja abierta a la vez', async () => {
+  it('el vendedor no ve ni maneja la caja; solo sabe si está abierta', async () => {
     const s = await seller();
-    await s.post('/api/cash/open').send({ openingAmount: 300 }).expect(201);
-    const again = await s.post('/api/cash/open').send({ openingAmount: 100 }).expect(409);
-    expect(again.body.error.message).toMatch(/^Ya hay una caja abierta \(la abrió Luis a las/);
+    await s.get('/api/cash/current').expect(403);
+    await s.post('/api/cash/open').send({ openingAmount: 300 }).expect(403);
+    await s.post('/api/cash/close').send({ countedCash: 0 }).expect(403);
+    await s
+      .post('/api/cash/movements')
+      .send({ type: 'OUT', amount: 5, reason: 'Hielo' })
+      .expect(403);
+    expect((await s.get('/api/pos/cash-status').expect(200)).body).toEqual({ open: false });
+
+    const admin = await adminAgent();
+    await admin.post('/api/cash/open').send({ openingAmount: 300 }).expect(201);
+    expect((await s.get('/api/pos/cash-status').expect(200)).body).toEqual({ open: true });
+  });
+
+  it('solo una caja abierta a la vez', async () => {
+    const a = await adminAgent();
+    await a.post('/api/cash/open').send({ openingAmount: 300 }).expect(201);
+    const again = await a.post('/api/cash/open').send({ openingAmount: 100 }).expect(409);
+    expect(again.body.error.message).toMatch(/^Ya hay una caja abierta \(la abrió Admin a las/);
   });
 
   it('las aperturas simultáneas no crean dos cajas', async () => {
-    const s = await seller();
-    await Promise.all([1, 2, 3].map(() => s.post('/api/cash/open').send({ openingAmount: 100 })));
+    const a = await adminAgent();
+    await Promise.all([1, 2, 3].map(() => a.post('/api/cash/open').send({ openingAmount: 100 })));
     expect(await prisma.cashSession.count({ where: { status: 'OPEN' } })).toBe(1);
   });
 
   it('arqueo: fondo + efectivo cobrado + entradas − salidas, y la diferencia al cerrar', async () => {
     const s = await seller();
-    await s.post('/api/cash/open').send({ openingAmount: 200 }).expect(201);
+    const admin = await adminAgent();
+    await admin.post('/api/cash/open').send({ openingAmount: 200 }).expect(201);
 
     const category = await prisma.category.create({ data: { name: 'Bebidas' } });
     const beer = await prisma.product.create({
@@ -50,11 +67,11 @@ describe('caja', () => {
     await pay('CASH', 3); // 60 en efectivo (recibe 100, da 40 de vuelto)
     await pay('CARD', 2); // 40 con tarjeta
 
-    await s
+    await admin
       .post('/api/cash/movements')
       .send({ type: 'OUT', amount: 50, reason: 'Pago a proveedor de limones' })
       .expect(201);
-    const tooMuch = await s
+    const tooMuch = await admin
       .post('/api/cash/movements')
       .send({ type: 'OUT', amount: 999, reason: 'Retiro' })
       .expect(400);
@@ -62,7 +79,7 @@ describe('caja', () => {
       'No hay tanto efectivo en caja: deberían haber Q 210.00.',
     );
 
-    const current = (await s.get('/api/cash/current').expect(200)).body.session;
+    const current = (await admin.get('/api/cash/current').expect(200)).body.session;
     expect(current).toMatchObject({
       cashSales: 60,
       cardSales: 40,
@@ -71,7 +88,7 @@ describe('caja', () => {
       paymentsCount: 2,
     });
 
-    const closed = (await s.post('/api/cash/close').send({ countedCash: 205 }).expect(200)).body
+    const closed = (await admin.post('/api/cash/close').send({ countedCash: 205 }).expect(200)).body
       .session;
     expect(closed).toMatchObject({
       status: 'CLOSED',
@@ -79,14 +96,15 @@ describe('caja', () => {
       countedCash: 205,
       difference: -5,
     });
-    expect((await s.get('/api/cash/current').expect(200)).body.session).toBeNull();
-    await s.post('/api/cash/close').send({ countedCash: 0 }).expect(409);
+    expect((await admin.get('/api/cash/current').expect(200)).body.session).toBeNull();
+    await admin.post('/api/cash/close').send({ countedCash: 0 }).expect(409);
   });
 
   it('el cierre del día suma lo cobrado en la fecha y es solo para admin', async () => {
     const s = await seller();
     await s.get('/api/cash/daily').expect(403);
-    await s.post('/api/cash/open').send({ openingAmount: 0 }).expect(201);
+    const admin = await adminAgent();
+    await admin.post('/api/cash/open').send({ openingAmount: 0 }).expect(201);
     const category = await prisma.category.create({ data: { name: 'Bebidas' } });
     const beer = await prisma.product.create({
       data: { name: 'Gallo', price: 20, categoryId: category.id },
@@ -103,7 +121,6 @@ describe('caja', () => {
       .send({ method: 'CASH', amount: 66 })
       .expect(201);
 
-    const admin = await adminAgent();
     const daily = (await admin.get('/api/cash/daily').expect(200)).body.daily;
     expect(daily).toMatchObject({
       date: getBusinessDate(),

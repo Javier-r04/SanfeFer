@@ -20,7 +20,7 @@ import { TicketModal } from '@/printing/TicketModal';
 import { toast } from '@/stores/toast';
 import { useCloseZeroTab, useOpenTab, useSetCharges, useTab } from './api';
 import { cartTotals, useTabCart } from './cart';
-import { ItemStatusBadge, PosHeader } from './components';
+import { PosHeader } from './components';
 import { DiscountModal } from './DiscountModal';
 import { ItemActionsModal } from './ItemActionsModal';
 import { MoveItemsModal } from './MoveItemsModal';
@@ -169,7 +169,7 @@ export function TabPage() {
           >
             <ShoppingBag aria-hidden="true" className="size-5 shrink-0" />
             <span className="flex-1 text-sm font-bold">
-              {draftTotals.units} producto{draftTotals.units === 1 ? '' : 's'} sin enviar a barra
+              {draftTotals.units} producto{draftTotals.units === 1 ? '' : 's'} sin confirmar
             </span>
             <span className="text-sm font-extrabold underline underline-offset-4">Continuar</span>
           </Link>
@@ -276,9 +276,6 @@ export function TabPage() {
                       <span className={cn('tabular font-extrabold', cancelled && 'line-through')}>
                         {formatMoney(item.lineTotal)}
                       </span>
-                    </span>
-                    <span className="self-start">
-                      <ItemStatusBadge status={item.status} />
                     </span>
                   </button>
                 );

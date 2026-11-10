@@ -147,7 +147,7 @@ export function ExtrasModal({
         })}
 
         <div className="flex flex-col gap-2">
-          <Field label="Nota para barra (opcional)">
+          <Field label="Nota (opcional)">
             {(a) => (
               <Input
                 {...a}

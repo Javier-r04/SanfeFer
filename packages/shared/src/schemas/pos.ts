@@ -54,17 +54,6 @@ export const sendOrderSchema = z.object({
 });
 export type SendOrderInput = z.input<typeof sendOrderSchema>;
 
-export const ITEM_FLOW = ['PENDING', 'PREPARING', 'DELIVERED'] as const;
-export type ItemFlowStatus = (typeof ITEM_FLOW)[number];
-
-export const itemStatusSchema = z.object({
-  status: z.enum(ITEM_FLOW, { error: 'Estado no válido' }),
-});
-
-export const advanceOrderSchema = z.object({
-  to: z.enum(['PREPARING', 'DELIVERED'], { error: 'Estado no válido' }),
-});
-
 export const cancelItemSchema = z.object({
   reason: z
     .string({ error: 'Indica el motivo' })
@@ -73,7 +62,9 @@ export const cancelItemSchema = z.object({
     .max(120, 'El motivo no puede tener más de 120 caracteres'),
   /** Cuántas unidades cancelar; por defecto toda la línea. */
   quantity: z.number().int().min(1, 'La cantidad mínima es 1').optional(),
-  /** PIN de un administrador, necesario si el ítem ya se está preparando o se entregó. */
+  /** Si el producto ya se preparó: se registra como merma en lugar de volver al inventario. */
+  wasted: z.boolean().optional(),
+  /** Solo un administrador cancela: un vendedor necesita el PIN de uno. */
   authorizationPin: z
     .string()
     .regex(/^\d{4,6}$/, 'El PIN debe tener de 4 a 6 dígitos')

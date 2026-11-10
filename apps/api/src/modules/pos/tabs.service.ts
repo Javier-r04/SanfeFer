@@ -242,6 +242,8 @@ export async function sendOrder(tabId: number, raw: SendOrderInput, userId: numb
           unitPrice: l.unitPrice,
           unitCost: unitCost.toDecimalPlaces(4),
           note: l.note,
+          // Sin barra: al confirmar la orden el producto ya se considera entregado.
+          status: 'DELIVERED',
           consumption: [...l.consumption].map(([inventoryItemId, quantity]) => ({
             inventoryItemId,
             quantity: Number(quantity),

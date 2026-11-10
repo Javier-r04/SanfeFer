@@ -1,6 +1,6 @@
 # SanfeFer
 
-Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas…): POS por mesas y clientes, barra, inventario con recetas, compras, caja y reportes. Interfaz en español; funciona en PC, tablet y celular, con tema claro y oscuro.
+Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas…): POS por mesas y clientes, inventario con recetas, compras, caja y reportes. Interfaz en español; funciona en PC, tablet y celular, con tema claro y oscuro.
 
 - Plan, modelo de datos y fases: [`docs/PLAN.md`](docs/PLAN.md)
 - **Publicar en internet** (Supabase + Render + Vercel), paso a paso: [`docs/DEPLOY.md`](docs/DEPLOY.md)
@@ -13,7 +13,7 @@ Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas�
 | 0    | Fundaciones, ingreso con PIN/contraseña, roles, usuarios | ✅     |
 | 1    | Catálogo e inventario                                    | ✅     |
 | 2    | Compras                                                  | ✅     |
-| 3    | POS: mesas, órdenes y barra                              | ✅     |
+| 3    | POS: mesas y órdenes                                     | ✅     |
 | 4    | Cobro, ticket y caja                                     | ✅     |
 | 5    | Reportes y CSV                                           | ✅     |
 | 6    | PWA y despliegue (Vercel + Render + Supabase)            | ✅     |
@@ -95,16 +95,18 @@ vercel.json     Web en Vercel; reenvía /api a Render
 - **Dinero** en `Decimal`, nunca en `float`.
 - **Inventario**: todo cambio de stock pasa por un solo punto (`apps/api/src/modules/inventory/stock.ts`), dentro de una transacción, con bloqueo de fila y su movimiento en el historial. Las entradas con costo recalculan el **costo promedio ponderado**.
 - **Compras**: se registran como en la factura (cantidad y total de la línea); el costo por unidad se deriva. La compra y el aumento de stock van en una sola transacción. Anular devuelve stock y costo promedio, y se rechaza si lo comprado ya se usó.
-- **POS**: el inventario se descuenta al **enviar a barra** (receta + extras). Cancelar un producto pendiente devuelve el inventario; si ya se estaba preparando o se entregó, requiere el PIN de un administrador y se registra como merma. La orden en curso se guarda en el dispositivo hasta enviarla. Mesas, cuentas y barra se refrescan cada 5 s.
+- **POS**: no hay pantalla de barra. Al **confirmar la orden** los productos quedan entregados y el inventario se descuenta (receta + extras). La orden en curso se guarda en el dispositivo hasta confirmarla. Mesas y cuentas se refrescan cada 5 s.
+- **Cancelar productos**: solo un administrador (o un vendedor con el PIN de un administrador). Al cancelar se elige si el producto vuelve al inventario o, si ya se preparó, se registra como merma.
+- **Mesas**: las configura el admin en **Admin → Mesas** (nombre, zona, orden, visibles u ocultas, y "Agregar varias"). Una mesa con cuentas abiertas no se oculta, y una con historial no se borra: se oculta.
 - **Costo y margen del producto**: receta + la opción más barata de cada grupo de extras obligatorio (p. ej. la cerveza de la michelada). La disponibilidad considera también esos extras (Gallo **o** Corona).
 - **Cobro**: total = subtotal − descuento + servicio (el servicio se calcula sobre el subtotal ya con descuento). Los cálculos de dinero se hacen en centavos enteros. Se aceptan pagos parciales y mixtos (efectivo con vuelto y tarjeta con referencia); la cuenta se cierra sola al quedar pagada y sus totales se congelan. Cobrar requiere una caja abierta.
 - **Descuentos**: el vendedor necesita el PIN de un administrador; el motivo queda con quién autorizó. Ni un descuento ni una cancelación pueden dejar el total por debajo de lo ya pagado.
 - **Dividir cuenta**: los productos (o parte de una línea) se mueven a otra cuenta de la mesa o a una nueva "Cliente N"; también se puede cobrar en partes iguales (÷N).
 - **Ticket**: comprobante interno, **no es factura**. Un mismo documento se dibuja como vista previa/impresión del navegador (58 u 80 mm) y como comandos **ESC/POS** para impresoras térmicas (USB/serie vía Web Serial en Chrome/Edge, o descarga `.bin`).
-- **Caja**: solo una caja abierta a la vez (índice único parcial en la base de datos). Debe haber = fondo + ventas en efectivo + entradas − salidas; al cerrar se registra lo contado y la diferencia. El cierre del día cuenta los cobros por **fecha de cobro** en la jornada de Guatemala.
+- **Caja**: solo el **administrador** la abre, registra entradas y salidas y la cierra; el vendedor cobra pero no ve montos de caja (el POS solo sabe si hay una abierta). Solo una caja abierta a la vez (índice único parcial en la base de datos). Debe haber = fondo + ventas en efectivo + entradas − salidas; al cerrar se registra lo contado y la diferencia. El cierre del día cuenta los cobros por **fecha de cobro** en la jornada de Guatemala.
 - **Reportes** (solo admin): usan el mismo criterio que el cierre del día. Cuentan las cuentas cobradas por **fecha de cobro** (jornada de Guatemala), sin los productos cancelados.
   - **Ventas netas** = subtotal − descuentos.
-  - **Utilidad bruta** = ventas netas − costo de lo vendido. El costo es el de la receta y los extras al costo promedio del momento en que se envió a barra.
+  - **Utilidad bruta** = ventas netas − costo de lo vendido. El costo es el de la receta y los extras al costo promedio del momento en que se confirmó la orden.
   - El cargo por servicio se muestra aparte y no cuenta como utilidad. Las mermas se restan al final.
   - Cada periodo se compara con el anterior del mismo largo. Las semanas empiezan en lunes. El rango máximo es de dos años.
 - **CSV**: se genera en el navegador. Usa coma como separador, punto decimal, UTF-8 con BOM (Excel muestra bien los acentos) y fechas `AAAA-MM-DD`. Los textos que empiezan con `=`, `+`, `-` o `@` se neutralizan para que Excel no los ejecute como fórmulas.

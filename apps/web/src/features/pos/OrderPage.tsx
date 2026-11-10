@@ -129,10 +129,10 @@ export function OrderPage() {
         },
       },
       {
-        onSuccess: ({ orderId, stockWarnings }) => {
+        onSuccess: ({ stockWarnings }) => {
           clear(tabId);
           setCartOpen(false);
-          toast.success(`Comanda #${orderId} enviada a barra.`);
+          toast.success('Orden confirmada.');
           if (stockWarnings.length)
             toast.info(`Revisa el inventario: ${stockWarnings.join('; ')}.`);
           navigate(`/pos/cuentas/${tabId}`, { replace: true });
@@ -266,7 +266,7 @@ export function OrderPage() {
           </button>
           <Button size="xl" onClick={sendOrder} disabled={!units} loading={send.isPending}>
             <Send aria-hidden="true" className="size-5" />
-            Enviar a barra
+            Confirmar orden
           </Button>
         </div>
       </div>
