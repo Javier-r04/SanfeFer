@@ -5,8 +5,9 @@ import { StockBadge } from '@/features/inventory/StockBadge';
 import { formatMoney, formatQty, formatUnitCost } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useInventoryReport, type ReportRange } from './api';
-import { inventoryColumns, downloadCsv } from './csv-export';
-import { CsvButton, DataTable, KpiCard, Refreshing, td, tdNum } from './ReportParts';
+import { downloadReportPdf } from './pdf-export';
+import { inventoryPdf } from './report-pdfs';
+import { PdfButton, DataTable, KpiCard, Refreshing, td, tdNum } from './ReportParts';
 
 type Filter = 'all' | 'alerts' | 'moved';
 
@@ -63,10 +64,9 @@ export function InventoryTab({ range }: { range: ReportRange }) {
           ]}
           className="w-full sm:w-auto"
         />
-        <CsvButton
-          label="Exportar CSV"
+        <PdfButton
           disabled={!rows.length || report.isPlaceholderData}
-          onExport={() => downloadCsv('inventario', r, inventoryColumns, rows)}
+          onExport={() => downloadReportPdf('inventario', inventoryPdf(r, rows))}
         />
       </div>
 

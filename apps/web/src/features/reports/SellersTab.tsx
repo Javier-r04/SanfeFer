@@ -5,8 +5,9 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useSellersReport, type ReportRange } from './api';
 import { BarList, ChartCard } from './charts';
-import { downloadCsv, sellerColumns } from './csv-export';
-import { CsvButton, DataTable, Refreshing, td, tdNum } from './ReportParts';
+import { downloadReportPdf } from './pdf-export';
+import { sellersPdf } from './report-pdfs';
+import { PdfButton, DataTable, Refreshing, td, tdNum } from './ReportParts';
 
 export function SellersTab({ range }: { range: ReportRange }) {
   const report = useSellersReport(range);
@@ -22,9 +23,9 @@ export function SellersTab({ range }: { range: ReportRange }) {
         title="Total por vendedor"
         subtitle="Cuentas cobradas que abrió cada quien"
         actions={
-          <CsvButton
+          <PdfButton
             disabled={report.isPlaceholderData}
-            onExport={() => downloadCsv('vendedores', report.data, sellerColumns, sellers)}
+            onExport={() => downloadReportPdf('vendedores', sellersPdf(report.data))}
           />
         }
         chart={

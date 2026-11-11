@@ -437,6 +437,8 @@ export interface SalesPeriodDto {
   netSales: number;
   cost: number;
   grossProfit: number;
+  /** Compras recibidas (no anuladas) con fecha de compra en el periodo. */
+  purchases: number;
 }
 
 export interface SalesReportDto {
@@ -530,6 +532,34 @@ export interface InventoryReportDto {
   outCount: number;
   wasteCost: number;
   items: InventoryReportRowDto[];
+}
+
+/** Ventas contra compras del rango (balance de compras y ventas). */
+export interface BalanceReportDto {
+  from: string;
+  to: string;
+  groupBy: ReportGroupBy;
+  sales: {
+    /** Total cobrado (con descuentos y servicio). */
+    total: number;
+    tabs: number;
+    netSales: number;
+    /** Costo de lo vendido. */
+    cost: number;
+    grossProfit: number;
+  };
+  purchases: {
+    /** Total de las compras recibidas (no anuladas). */
+    total: number;
+    count: number;
+  };
+  /** Total cobrado − total comprado. */
+  difference: number;
+  previous: { from: string; to: string; sales: number; purchases: number; difference: number };
+  series: { period: string; sales: number; purchases: number; difference: number }[];
+  bySupplier: { supplierId: number; name: string; count: number; total: number }[];
+  /** Artículos comprados en el rango, de mayor a menor gasto. */
+  byItem: { id: number; name: string; unit: MeasureUnit; quantity: number; total: number }[];
 }
 
 /** Una cuenta cobrada, para el detalle exportable. */

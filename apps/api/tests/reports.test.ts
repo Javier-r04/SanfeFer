@@ -131,7 +131,15 @@ describe('reportes', () => {
       cancelled: { units: 1, amount: 20 },
     });
     expect(report.series).toEqual([
-      { period: today, tabs: 2, total: 99.6, netSales: 96, cost: 40, grossProfit: 56 },
+      {
+        period: today,
+        tabs: 2,
+        total: 99.6,
+        netSales: 96,
+        cost: 40,
+        grossProfit: 56,
+        purchases: 0,
+      },
     ]);
     expect(report.byHour).toHaveLength(24);
     expect(report.byHour.reduce((s: number, h: { total: number }) => s + h.total, 0)).toBeCloseTo(
@@ -264,5 +272,67 @@ describe('reportes', () => {
       }),
     ]);
     expect(tabs[0].businessDate).toBe(today);
+  });
+});
+
+describe('balance de compras y ventas', () => {
+  it('compara lo cobrado con lo comprado, por periodo, proveedor y artículo', async () => {
+    const { admin } = await scenario();
+    const supplier = await prisma.supplier.create({
+      data: { name: 'Cervecería Centro Americana' },
+    });
+    const other = await prisma.supplier.create({ data: { name: 'Distribuidora El Sol' } });
+    const gallo = await prisma.inventoryItem.findFirstOrThrow({ where: { name: 'Gallo 350 ml' } });
+    const lime = await prisma.inventoryItem.create({
+      data: { name: 'Limón', kind: 'SUPPLY', unit: 'UNIT', stock: 0, minStock: 0 },
+    });
+    const buy = (supplierId: number, purchasedAt: string, lines: unknown[]) =>
+      admin.post('/api/purchases').send({ supplierId, purchasedAt, items: lines }).expect(201);
+    await buy(supplier.id, today, [
+      { inventoryItemId: gallo.id, quantity: 24, lineTotal: 180 },
+      { inventoryItemId: lime.id, quantity: 50, lineTotal: 25 },
+    ]);
+    await buy(other.id, yesterday, [{ inventoryItemId: lime.id, quantity: 20, lineTotal: 12 }]);
+    // Una compra anulada no cuenta.
+    const voided = await buy(supplier.id, today, [
+      { inventoryItemId: lime.id, quantity: 1, lineTotal: 1 },
+    ]);
+    await admin
+      .post(`/api/purchases/${voided.body.purchase.id}/void`)
+      .send({ reason: 'Duplicada' })
+      .expect(200);
+
+    const res = await admin.get(`/api/reports/balance?from=${yesterday}&to=${today}`).expect(200);
+    const r = res.body.report;
+    expect(r.sales).toMatchObject({ total: 99.6, tabs: 2 });
+    expect(r.purchases).toEqual({ total: 217, count: 2 });
+    expect(r.difference).toBe(-117.4);
+    expect(r.series).toEqual([
+      { period: yesterday, sales: 0, purchases: 12, difference: -12 },
+      { period: today, sales: 99.6, purchases: 205, difference: -105.4 },
+    ]);
+    expect(r.bySupplier).toEqual([
+      { supplierId: supplier.id, name: 'Cervecería Centro Americana', count: 1, total: 205 },
+      { supplierId: other.id, name: 'Distribuidora El Sol', count: 1, total: 12 },
+    ]);
+    expect(r.byItem).toEqual([
+      { id: gallo.id, name: 'Gallo 350 ml', unit: 'UNIT', quantity: 24, total: 180 },
+      { id: lime.id, name: 'Limón', unit: 'UNIT', quantity: 70, total: 37 },
+    ]);
+
+    // La serie del resumen de ventas también trae las compras.
+    const sales = await admin.get(`/api/reports/sales?from=${yesterday}&to=${today}`).expect(200);
+    expect(sales.body.report.series.map((s: { purchases: number }) => s.purchases)).toEqual([
+      12, 205,
+    ]);
+  });
+
+  it('solo el administrador lo ve y valida el rango', async () => {
+    const admin = await adminAgent();
+    await admin.get(`/api/reports/balance?from=${today}&to=${yesterday}`).expect(400);
+    await createUser({ username: 'luis', pin: '1234' });
+    const seller = request.agent(app);
+    await seller.post('/api/auth/login/pin').send({ username: 'luis', pin: '1234' }).expect(200);
+    await seller.get(`/api/reports/balance?from=${today}&to=${today}`).expect(403);
   });
 });

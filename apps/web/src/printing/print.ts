@@ -150,11 +150,3 @@ export async function printSerial(doc: TicketDocument, paperWidth: 58 | 80, baud
     await port.close();
   }
 }
-
-/** Descarga los bytes ESC/POS (útil para probar con utilidades de la impresora). */
-export function downloadEscPos(doc: TicketDocument, paperWidth: 58 | 80, name: string) {
-  downloadBlob(
-    new Blob([escPosBytes(doc, paperWidth)], { type: 'application/octet-stream' }),
-    `${name}.bin`,
-  );
-}

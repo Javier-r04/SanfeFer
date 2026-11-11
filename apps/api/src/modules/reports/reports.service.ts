@@ -9,6 +9,7 @@ import {
   previousRange,
   stockStatus,
   toCents,
+  type BalanceReportDto,
   type InventoryReportDto,
   type ProductsReportDto,
   type ReportRangeQuery,
@@ -117,9 +118,24 @@ async function wasteCostCents(r: ReportRangeQuery) {
   return byItem;
 }
 
+/** Compras recibidas (no anuladas) por fecha de compra, en centavos. */
+async function purchaseDays(r: ReportRangeQuery) {
+  const rows = await prisma.purchase.groupBy({
+    by: ['purchasedAt'],
+    where: { status: 'RECEIVED', purchasedAt: dateRange(r) },
+    _sum: { total: true },
+    _count: { _all: true },
+  });
+  return rows.map((row) => ({
+    date: row.purchasedAt.toISOString().slice(0, 10),
+    total: cents(row._sum.total),
+    count: row._count._all,
+  }));
+}
+
 export async function salesReport(q: SalesReportQuery): Promise<SalesReportDto> {
   const prev = previousRange(q.from, q.to);
-  const [rows, prevRows, payments, hours, waste, cancelled] = await Promise.all([
+  const [rows, prevRows, payments, hours, waste, cancelled, bought] = await Promise.all([
     dayRows(q),
     dayRows(prev),
     prisma.payment.groupBy({
@@ -140,6 +156,7 @@ export async function salesReport(q: SalesReportQuery): Promise<SalesReportDto> 
       where: { status: 'CANCELLED', statusChangedAt: instantRange(q) },
       select: { quantity: true, unitPrice: true, discountAmount: true, status: true },
     }),
+    purchaseDays(q),
   ]);
 
   const acc = sumRows(rows);
@@ -152,9 +169,10 @@ export async function salesReport(q: SalesReportQuery): Promise<SalesReportDto> 
   const series = new Map(
     periodKeys(q.from, q.to, q.groupBy).map((period) => [
       period,
-      { period, tabs: 0, total: 0, net: 0, cost: 0 },
+      { period, tabs: 0, total: 0, net: 0, cost: 0, purchases: 0 },
     ]),
   );
+  for (const b of bought) series.get(periodKey(b.date, q.groupBy))!.purchases += b.total;
   const weekdays = Array.from({ length: 7 }, (_, i) => ({ weekday: i + 1, tabs: 0, total: 0 }));
   for (const row of rows) {
     const p = series.get(periodKey(row.date, q.groupBy))!;
@@ -197,6 +215,7 @@ export async function salesReport(q: SalesReportQuery): Promise<SalesReportDto> 
       netSales: fromCents(p.net),
       cost: fromCents(p.cost),
       grossProfit: fromCents(p.net - p.cost),
+      purchases: fromCents(p.purchases),
     })),
     byHour: Array.from({ length: 24 }, (_, hour) => {
       const h = hours.find((x) => x.hour === hour);
@@ -430,4 +449,103 @@ export async function tabsReport(q: ReportRangeQuery): Promise<TabReportRowDto[]
     cash: byMethod(t, 'CASH'),
     card: byMethod(t, 'CARD'),
   }));
+}
+
+/** Balance de compras y ventas: lo cobrado contra lo comprado en el rango. */
+export async function balanceReport(q: SalesReportQuery): Promise<BalanceReportDto> {
+  const prev = previousRange(q.from, q.to);
+  const [rows, prevRows, bought, prevBought, suppliers, items] = await Promise.all([
+    dayRows(q),
+    dayRows(prev),
+    purchaseDays(q),
+    purchaseDays(prev),
+    prisma.purchase.groupBy({
+      by: ['supplierId'],
+      where: { status: 'RECEIVED', purchasedAt: dateRange(q) },
+      _sum: { total: true },
+      _count: { _all: true },
+    }),
+    prisma.purchaseItem.groupBy({
+      by: ['inventoryItemId'],
+      where: { purchase: { status: 'RECEIVED', purchasedAt: dateRange(q) } },
+      _sum: { quantity: true, subtotal: true },
+    }),
+  ]);
+  const [supplierRows, itemRows] = await Promise.all([
+    prisma.supplier.findMany({
+      where: { id: { in: suppliers.map((s) => s.supplierId) } },
+      select: { id: true, name: true },
+    }),
+    prisma.inventoryItem.findMany({
+      where: { id: { in: items.map((i) => i.inventoryItemId) } },
+      select: { id: true, name: true, unit: true },
+    }),
+  ]);
+
+  const totals = toTotals(sumRows(rows));
+  const salesCents = toCents(totals.total);
+  const boughtCents = bought.reduce((s, b) => s + b.total, 0);
+  const prevSales = sumRows(prevRows).total;
+  const prevBoughtCents = prevBought.reduce((s, b) => s + b.total, 0);
+
+  const series = new Map(
+    periodKeys(q.from, q.to, q.groupBy).map((period) => [
+      period,
+      { period, sales: 0, purchases: 0 },
+    ]),
+  );
+  for (const row of rows) series.get(periodKey(row.date, q.groupBy))!.sales += cents(row.total);
+  for (const b of bought) series.get(periodKey(b.date, q.groupBy))!.purchases += b.total;
+
+  const supplierName = new Map(supplierRows.map((s) => [s.id, s.name]));
+  const itemById = new Map(itemRows.map((i) => [i.id, i]));
+  return {
+    from: q.from,
+    to: q.to,
+    groupBy: q.groupBy,
+    sales: {
+      total: totals.total,
+      tabs: totals.tabs,
+      netSales: totals.netSales,
+      cost: totals.cost,
+      grossProfit: totals.grossProfit,
+    },
+    purchases: {
+      total: fromCents(boughtCents),
+      count: bought.reduce((s, b) => s + b.count, 0),
+    },
+    difference: fromCents(salesCents - boughtCents),
+    previous: {
+      ...prev,
+      sales: fromCents(prevSales),
+      purchases: fromCents(prevBoughtCents),
+      difference: fromCents(prevSales - prevBoughtCents),
+    },
+    series: [...series.values()].map((p) => ({
+      period: p.period,
+      sales: fromCents(p.sales),
+      purchases: fromCents(p.purchases),
+      difference: fromCents(p.sales - p.purchases),
+    })),
+    bySupplier: suppliers
+      .map((s) => ({
+        supplierId: s.supplierId,
+        name: supplierName.get(s.supplierId) ?? 'Proveedor',
+        count: s._count._all,
+        total: fromCents(cents(s._sum.total)),
+      }))
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'es')),
+    byItem: items
+      .map((i) => {
+        const item = itemById.get(i.inventoryItemId)!;
+        return {
+          id: item.id,
+          name: item.name,
+          unit: item.unit,
+          quantity: Number(i._sum.quantity ?? 0),
+          total: fromCents(cents(i._sum.subtotal)),
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'es')),
+  };
 }

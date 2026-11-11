@@ -9,7 +9,15 @@ export interface ColumnDatum {
   /** Título completo del tooltip. */
   title: string;
   value: number;
+  /** Segunda serie opcional (p. ej. compras junto a ventas). */
+  secondary?: number;
   details?: { label: string; value: string }[];
+}
+
+/** Nombres de las series cuando el gráfico tiene dos. */
+export interface ChartSeries {
+  primary: string;
+  secondary: string;
 }
 
 /** Paso "redondo" (1, 2, 5 × 10ⁿ) para que el eje muestre números limpios. */
@@ -34,27 +42,45 @@ function useWidth<T extends HTMLElement>() {
 
 const PLOT_HEIGHT = 180;
 
+/** Leyenda de un gráfico de dos series. */
+export function ChartLegend({ series }: { series: ChartSeries }) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-semibold" aria-hidden="true">
+      <span className="flex items-center gap-1.5">
+        <span className="size-3 rounded-[3px] bg-primary" />
+        {series.primary}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="size-3 rounded-[3px] bg-secondary" />
+        {series.secondary}
+      </span>
+    </div>
+  );
+}
+
 /**
- * Gráfico de columnas de una sola serie. Cada columna es su propia zona de hover/foco
- * (toda la franja, no solo la barra) y se recorre con las flechas del teclado.
+ * Gráfico de columnas de una serie, o de dos lado a lado (con `series`). Cada columna es su
+ * propia zona de hover/foco (toda la franja, no solo la barra) y se recorre con las flechas.
  */
 export function ColumnChart({
   data,
   label,
   formatValue,
   formatTick,
+  series,
 }: {
   data: ColumnDatum[];
   label: string;
   formatValue: (v: number) => string;
   formatTick: (v: number) => string;
+  series?: ChartSeries;
 }) {
   const [plotRef, width] = useWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   const [focusIndex, setFocusIndex] = useState(0);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const max = Math.max(0, ...data.map((d) => d.value));
+  const max = Math.max(0, ...data.map((d) => Math.max(d.value, series ? (d.secondary ?? 0) : 0)));
   const step = max > 0 ? niceStep(max / 4) : 1;
   const top = max > 0 ? Math.ceil(max / step) * step : 4;
   const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
@@ -118,7 +144,7 @@ export function ColumnChart({
                   }}
                   type="button"
                   tabIndex={i === focusIndex ? 0 : -1}
-                  aria-label={`${d.title}: ${formatValue(d.value)}${d.details?.length ? `, ${d.details.map((x) => `${x.label} ${x.value}`).join(', ')}` : ''}`}
+                  aria-label={`${d.title}: ${series ? `${series.primary} ${formatValue(d.value)}, ${series.secondary} ${formatValue(d.secondary ?? 0)}` : formatValue(d.value)}${d.details?.length ? `, ${d.details.map((x) => `${x.label} ${x.value}`).join(', ')}` : ''}`}
                   onPointerEnter={() => setActive(i)}
                   onPointerLeave={() => setActive((a) => (a === i ? null : a))}
                   onFocus={() => {
@@ -129,7 +155,26 @@ export function ColumnChart({
                   onKeyDown={(e) => onKey(e, i)}
                   className="group relative flex h-full min-w-0 flex-1 items-end justify-center outline-none"
                 >
-                  {d.value > 0 ? (
+                  {series ? (
+                    <span className="flex h-full w-[80%] max-w-12 items-end justify-center gap-[2px]">
+                      {[d.value, d.secondary ?? 0].map((v, j) => (
+                        <span
+                          key={j}
+                          className={cn(
+                            'block w-1/2 max-w-5 rounded-t-[3px] transition-colors',
+                            j === 0
+                              ? shown === i
+                                ? 'bg-primary-ink'
+                                : 'bg-primary'
+                              : shown === i
+                                ? 'bg-secondary-ink'
+                                : 'bg-secondary',
+                          )}
+                          style={{ height: v > 0 ? `${Math.max((v / top) * 100, 1)}%` : 0 }}
+                        />
+                      ))}
+                    </span>
+                  ) : d.value > 0 ? (
                     <span
                       className={cn(
                         'block w-[70%] max-w-6 rounded-t-[4px] transition-colors',
@@ -138,7 +183,7 @@ export function ColumnChart({
                       style={{ height: `${Math.max(h, 1)}%` }}
                     />
                   ) : null}
-                  {i === maxIndex && shown === null && slot >= 40 ? (
+                  {!series && i === maxIndex && shown === null && slot >= 40 ? (
                     <span
                       aria-hidden="true"
                       className="tabular absolute left-1/2 -translate-x-1/2 text-[11px] font-bold whitespace-nowrap text-text"
@@ -155,6 +200,7 @@ export function ColumnChart({
           {shown !== null && data[shown] ? (
             <Tooltip
               datum={data[shown]}
+              series={series}
               formatValue={formatValue}
               x={(shown + 0.5) * slot}
               width={width}
@@ -182,11 +228,13 @@ export function ColumnChart({
 
 function Tooltip({
   datum,
+  series,
   formatValue,
   x,
   width,
 }: {
   datum: ColumnDatum;
+  series?: ChartSeries;
   formatValue: (v: number) => string;
   x: number;
   width: number;
@@ -205,8 +253,28 @@ function Tooltip({
       className="pointer-events-none absolute top-0 z-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm shadow-lg"
       style={{ left, width: TIP }}
     >
-      <p className="tabular text-base font-extrabold">{formatValue(datum.value)}</p>
-      <p className="text-xs text-muted">{datum.title}</p>
+      {series ? (
+        <>
+          <p className="text-xs text-muted">{datum.title}</p>
+          {[
+            [series.primary, datum.value, 'bg-primary'],
+            [series.secondary, datum.secondary ?? 0, 'bg-secondary'],
+          ].map(([name, v, color]) => (
+            <p key={name as string} className="mt-0.5 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs">
+                <span className={cn('size-2.5 rounded-[2px]', color as string)} />
+                {name}
+              </span>
+              <span className="tabular font-extrabold">{formatValue(v as number)}</span>
+            </p>
+          ))}
+        </>
+      ) : (
+        <>
+          <p className="tabular text-base font-extrabold">{formatValue(datum.value)}</p>
+          <p className="text-xs text-muted">{datum.title}</p>
+        </>
+      )}
       {datum.details?.map((x) => (
         <p key={x.label} className="mt-0.5 flex justify-between gap-2 text-xs">
           <span className="text-muted">{x.label}</span>
