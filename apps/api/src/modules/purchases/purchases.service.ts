@@ -8,6 +8,7 @@ import {
 } from '@sanfefer/shared';
 import { badRequest, conflict, notFound } from '../../lib/errors';
 import { prisma } from '../../lib/prisma';
+import { pickSaleProduct, saleProductInclude } from '../inventory/inventory.service';
 import { applyStockChange, lockInventoryItems } from '../inventory/stock';
 import {
   purchaseDetailInclude,
@@ -71,7 +72,10 @@ export async function createPurchase(raw: PurchaseInput, userId: number) {
   }
 
   const ids = input.items.map((l) => l.inventoryItemId);
-  const items = await prisma.inventoryItem.findMany({ where: { id: { in: ids } } });
+  const items = await prisma.inventoryItem.findMany({
+    where: { id: { in: ids } },
+    include: saleProductInclude,
+  });
   const byId = new Map(items.map((i) => [i.id, i]));
   input.items.forEach((line, i) => {
     const item = byId.get(line.inventoryItemId);
@@ -85,6 +89,22 @@ export async function createPurchase(raw: PurchaseInput, userId: number) {
         [`items.${i}.inventoryItemId`]: 'Artículo desactivado',
       });
     }
+  });
+
+  // Precios de venta que cambian: solo de artículos que el menú vende tal cual.
+  const priceUpdates: { productId: number; price: Prisma.Decimal }[] = [];
+  input.items.forEach((line, i) => {
+    if (line.salePrice === undefined) return;
+    const item = byId.get(line.inventoryItemId)!;
+    const product = pickSaleProduct(item);
+    if (!product) {
+      throw badRequest(
+        `${item.name} no se vende tal cual en el menú. Créale un producto en Catálogo para ponerle precio de venta.`,
+        { [`items.${i}.salePrice`]: 'Este artículo no está en el menú' },
+      );
+    }
+    if (!product.price.equals(line.salePrice))
+      priceUpdates.push({ productId: product.id, price: D(line.salePrice) });
   });
 
   const lines = input.items.map((l) => {
@@ -125,6 +145,8 @@ export async function createPurchase(raw: PurchaseInput, userId: number) {
         purchaseItemId: line.id,
       });
     }
+    for (const u of priceUpdates)
+      await tx.product.update({ where: { id: u.productId }, data: { price: u.price } });
     return purchase.id;
   });
   return getPurchase(id);

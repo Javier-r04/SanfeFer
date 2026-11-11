@@ -270,3 +270,73 @@ describe('costo de compra', () => {
     expect((await getItem(admin, gallo)).purchaseCost).toBe(7.5);
   });
 });
+
+describe('precio de venta en la compra', () => {
+  it('actualiza el precio del producto del menú y el inventario lo muestra', async () => {
+    const admin = await adminAgent();
+    const { supplierId, gallo, corona } = await setup(admin);
+    const category = await prisma.category.create({ data: { name: 'Cervezas' } });
+    const product = await prisma.product.create({
+      data: {
+        name: 'Gallo',
+        price: 20,
+        categoryId: category.id,
+        recipe: { create: { inventoryItemId: gallo, quantity: 1 } },
+      },
+    });
+
+    // Corona no está en el menú: no se le puede poner precio de venta, y no se guarda nada.
+    const bad = await admin
+      .post('/api/purchases')
+      .send({
+        supplierId,
+        purchasedAt: today,
+        items: [
+          { inventoryItemId: gallo, quantity: 24, lineTotal: 192, salePrice: 22 },
+          { inventoryItemId: corona, quantity: 12, lineTotal: 138, salePrice: 25 },
+        ],
+      })
+      .expect(400);
+    expect(bad.body.error.fields['items.1.salePrice']).toBe('Este artículo no está en el menú');
+    expect(await prisma.purchase.count()).toBe(0);
+    expect(
+      Number((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).price),
+    ).toBe(20);
+
+    await admin
+      .post('/api/purchases')
+      .send({
+        supplierId,
+        purchasedAt: today,
+        items: [{ inventoryItemId: gallo, quantity: 24, lineTotal: 192, salePrice: 22.5 }],
+      })
+      .expect(201);
+    expect(
+      Number((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).price),
+    ).toBe(22.5);
+
+    const items = (await admin.get('/api/inventory/items').expect(200)).body.items;
+    expect(items.find((i: { id: number }) => i.id === gallo)).toMatchObject({
+      purchaseCost: 8,
+      saleProduct: 'Gallo',
+      salePrice: 22.5,
+      unitProfit: 14.5,
+    });
+  });
+
+  it('valida el precio de venta', async () => {
+    const admin = await adminAgent();
+    const { supplierId, gallo } = await setup(admin);
+    const res = await admin
+      .post('/api/purchases')
+      .send({
+        supplierId,
+        purchasedAt: today,
+        items: [{ inventoryItemId: gallo, quantity: 1, lineTotal: 7, salePrice: -1 }],
+      })
+      .expect(400);
+    expect(res.body.error.fields['items.0.salePrice']).toBe(
+      'El precio de venta no puede ser menor que 0',
+    );
+  });
+});

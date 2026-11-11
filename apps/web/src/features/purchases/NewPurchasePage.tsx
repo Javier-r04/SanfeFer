@@ -71,6 +71,48 @@ function CostHint({
   );
 }
 
+/** Ganancia por unidad con el precio de venta que se va a guardar. */
+function SaleHint({
+  product,
+  currentPrice,
+  salePrice,
+  quantity,
+  lineTotal,
+}: {
+  product: string;
+  currentPrice: number | null;
+  salePrice: number;
+  quantity: number;
+  lineTotal: number;
+}) {
+  if (!Number.isFinite(salePrice)) return null;
+  const changed = currentPrice !== null && Math.abs(salePrice - currentPrice) >= 0.005;
+  const hasCost = quantity > 0 && Number.isFinite(lineTotal);
+  const profit = hasCost ? salePrice - unitCostFromLine(lineTotal, quantity) : null;
+  return (
+    <div className="pb-3 text-sm">
+      <p className="text-muted">
+        Se vende como «{product}»
+        {changed ? (
+          <>
+            {' · '}
+            <span className="font-bold text-text">
+              cambia de {formatMoney(currentPrice)} a {formatMoney(salePrice)}
+            </span>
+          </>
+        ) : null}
+      </p>
+      {profit !== null ? (
+        <p className={cn('font-bold', profit < 0 ? 'text-danger-ink' : 'text-primary-ink')}>
+          {profit < 0
+            ? `Pierdes ${formatMoney(-profit)} por unidad`
+            : `Ganancia ${formatMoney(profit)} por unidad${salePrice > 0 ? ` (${formatPercent(profit / salePrice)})` : ''}`}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function LineRow({
   index,
   control,
@@ -97,6 +139,13 @@ function LineRow({
   const item = items.find((i) => i.id === line?.inventoryItemId);
   const unit = item ? UNIT_LABELS[item.unit] : '';
   const lineErrors = errors.items?.[index];
+
+  // Al elegir el artículo se propone su precio de venta actual; sin producto en el menú no se envía.
+  const itemId = item?.id;
+  const currentSalePrice = item?.salePrice ?? undefined;
+  useEffect(() => {
+    setValue(`items.${index}.salePrice`, currentSalePrice);
+  }, [itemId, currentSalePrice, index, setValue]);
 
   const updatePacks = (p: string, per: string) => {
     setPacks(p);
@@ -216,6 +265,39 @@ function LineRow({
         </div>
       ) : null}
       <CostHint item={item} quantity={Number(line?.quantity)} lineTotal={Number(line?.lineTotal)} />
+      {item?.saleProduct ? (
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-1 rounded-xl bg-surface-2 p-3">
+          <Field
+            label="Precio de venta (Q)"
+            error={lineErrors?.salePrice?.message}
+            className="w-44"
+          >
+            {(a) => (
+              <Input
+                {...a}
+                {...register(`items.${index}.salePrice`, { valueAsNumber: true })}
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min={0}
+                className="text-right"
+              />
+            )}
+          </Field>
+          <SaleHint
+            product={item.saleProduct}
+            currentPrice={item.salePrice}
+            salePrice={Number(line?.salePrice)}
+            quantity={Number(line?.quantity)}
+            lineTotal={Number(line?.lineTotal)}
+          />
+        </div>
+      ) : item?.kind === 'RESALE' ? (
+        <p className="text-sm text-muted">
+          {item.name} no está en el menú como producto suelto, así que no tiene precio de venta.
+          Créalo en Catálogo si lo vas a vender.
+        </p>
+      ) : null}
     </li>
   );
 }
@@ -260,19 +342,28 @@ export function NewPurchasePage() {
     0,
   );
 
-  const onSubmit = handleSubmit((values) =>
+  const onSubmit = handleSubmit((values) => {
+    const repriced = values.items.filter((l) => {
+      const current = items.data?.find((i) => i.id === l.inventoryItemId)?.salePrice;
+      return (
+        l.salePrice !== undefined && current != null && Math.abs(l.salePrice - current) >= 0.005
+      );
+    }).length;
     create.mutate(values, {
       onSuccess: ({ purchase }) => {
         toast.success(
-          `Compra #${purchase.id} registrada: ${purchase.itemCount} artículo${purchase.itemCount === 1 ? '' : 's'} sumados al inventario.`,
+          `Compra #${purchase.id} registrada: ${purchase.itemCount} artículo${purchase.itemCount === 1 ? '' : 's'} sumados al inventario.` +
+            (repriced
+              ? ` ${repriced === 1 ? 'Se actualizó 1 precio' : `Se actualizaron ${repriced} precios`} de venta.`
+              : ''),
         );
         // Sin esto, la lista mostraría un instante los datos anteriores (sin la compra nueva).
         queryClient.removeQueries({ queryKey: ['purchases', 'list'] });
         navigate('/admin/compras');
       },
       onError: (err) => handleFormError(err, setError),
-    }),
-  );
+    });
+  });
 
   if (suppliers.isPending || items.isPending) return <LoadingState />;
   if (suppliers.error || items.error) return <ErrorState error={suppliers.error ?? items.error} />;

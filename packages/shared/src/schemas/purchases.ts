@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { getBusinessDate } from '../business-date';
-import { businessDateSchema, decimal, intIdSchema, queryBoolean, quantitySchema } from './numbers';
+import {
+  businessDateSchema,
+  decimal,
+  intIdSchema,
+  priceSchema,
+  queryBoolean,
+  quantitySchema,
+} from './numbers';
 
 const optionalText = (label: string, max: number) =>
   z
@@ -60,6 +67,11 @@ export const purchaseLineSchema = z.object({
   inventoryItemId: intIdSchema('un artículo'),
   quantity: quantitySchema(),
   lineTotal: lineTotalSchema,
+  /**
+   * Precio de venta del producto del menú que vende este artículo tal cual (p. ej. la cerveza).
+   * Si viene, se actualiza en el menú al registrar la compra.
+   */
+  salePrice: priceSchema('El precio de venta').optional(),
 });
 export type PurchaseLineInput = z.infer<typeof purchaseLineSchema>;
 

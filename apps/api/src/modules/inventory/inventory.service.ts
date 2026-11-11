@@ -17,25 +17,44 @@ import { applyStockChange, lockInventoryItems } from './stock';
 
 const D = (v: number) => new Prisma.Decimal(v);
 
-const usageCount = {
-  _count: { select: { productComponents: true, modifierComponents: true } },
-  // Productos activos que lo venden tal cual (receta de un solo artículo, 1 unidad): dan su precio de venta.
+/** Productos activos que venden el artículo tal cual (receta de un solo artículo, 1 unidad). */
+export const saleProductInclude = {
   productComponents: {
     where: { quantity: 1, product: { active: true } },
     select: {
       product: {
-        select: { name: true, price: true, sortOrder: true, _count: { select: { recipe: true } } },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          sortOrder: true,
+          _count: { select: { recipe: true } },
+        },
       },
     },
   },
 } satisfies Prisma.InventoryItemInclude;
 
+type WithSaleProducts = Prisma.InventoryItemGetPayload<{ include: typeof saleProductInclude }>;
+
+/** El producto del menú que da el precio de venta del artículo (el primero del menú), o null. */
+export function pickSaleProduct(item: WithSaleProducts) {
+  return (
+    item.productComponents
+      .map((c) => c.product)
+      .filter((p) => p._count.recipe === 1)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)[0] ?? null
+  );
+}
+
+const usageCount = {
+  _count: { select: { productComponents: true, modifierComponents: true } },
+  ...saleProductInclude,
+} satisfies Prisma.InventoryItemInclude;
+
 type ItemWithUsage = Prisma.InventoryItemGetPayload<{ include: typeof usageCount }>;
 const toDto = (i: ItemWithUsage) => {
-  const sold = i.productComponents
-    .map((c) => c.product)
-    .filter((p) => p._count.recipe === 1)
-    .sort((a, b) => a.sortOrder - b.sortOrder)[0];
+  const sold = pickSaleProduct(i);
   return toInventoryItemDto(
     i,
     i._count.productComponents + i._count.modifierComponents,
