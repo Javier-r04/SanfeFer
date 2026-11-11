@@ -15,7 +15,7 @@ Sistema web de punto de venta para un negocio de bebidas (micheladas, cervezas�
 | 2    | Compras                                                  | ✅     |
 | 3    | POS: mesas y órdenes                                     | ✅     |
 | 4    | Cobro, ticket y caja                                     | ✅     |
-| 5    | Reportes y CSV                                           | ✅     |
+| 5    | Reportes y PDF                                           | ✅     |
 | 6    | PWA y despliegue (Vercel + Render + Supabase)            | ✅     |
 
 ## Requisitos
@@ -102,14 +102,14 @@ vercel.json     Web en Vercel; reenvía /api a Render
 - **Cobro**: total = subtotal − descuento + servicio (el servicio se calcula sobre el subtotal ya con descuento). Los cálculos de dinero se hacen en centavos enteros. Se aceptan pagos parciales y mixtos (efectivo con vuelto y tarjeta con referencia); la cuenta se cierra sola al quedar pagada y sus totales se congelan. Cobrar requiere una caja abierta.
 - **Descuentos**: el vendedor necesita el PIN de un administrador; el motivo queda con quién autorizó. Ni un descuento ni una cancelación pueden dejar el total por debajo de lo ya pagado.
 - **Dividir cuenta**: los productos (o parte de una línea) se mueven a otra cuenta de la mesa o a una nueva "Cliente N"; también se puede cobrar en partes iguales (÷N).
-- **Ticket**: comprobante interno, **no es factura**. Un mismo documento se dibuja como vista previa/impresión del navegador (58 u 80 mm) y como comandos **ESC/POS** para impresoras térmicas (USB/serie vía Web Serial en Chrome/Edge, o descarga `.bin`).
+- **Ticket**: comprobante interno, **no es factura**. Un mismo documento se dibuja como vista previa/impresión del navegador (58 u 80 mm) y como comandos **ESC/POS** para impresoras térmicas (USB/serie vía Web Serial en Chrome/Edge). Se descarga en **PDF**.
 - **Caja**: solo el **administrador** la abre, registra entradas y salidas y la cierra; el vendedor cobra pero no ve montos de caja (el POS solo sabe si hay una abierta). Solo una caja abierta a la vez (índice único parcial en la base de datos). Debe haber = fondo + ventas en efectivo + entradas − salidas; al cerrar se registra lo contado y la diferencia. El cierre del día cuenta los cobros por **fecha de cobro** en la jornada de Guatemala.
 - **Reportes** (solo admin): usan el mismo criterio que el cierre del día. Cuentan las cuentas cobradas por **fecha de cobro** (jornada de Guatemala), sin los productos cancelados.
   - **Ventas netas** = subtotal − descuentos.
   - **Utilidad bruta** = ventas netas − costo de lo vendido. El costo es el de la receta y los extras al costo de compra del momento en que se confirmó la orden.
   - El cargo por servicio se muestra aparte y no cuenta como utilidad. Las mermas se restan al final.
   - Cada periodo se compara con el anterior del mismo largo. Las semanas empiezan en lunes. El rango máximo es de dos años.
-- **CSV**: se genera en el navegador. Usa coma como separador, punto decimal, UTF-8 con BOM (Excel muestra bien los acentos) y fechas `AAAA-MM-DD`. Los textos que empiezan con `=`, `+`, `-` o `@` se neutralizan para que Excel no los ejecute como fórmulas.
+- **Exportar**: todo se exporta en **PDF** (reportes y comprobante), generado en el navegador con jsPDF; no hay CSV. Reportes: Resumen, Balance (ventas vs. compras), Productos, Vendedores, Inventario y el detalle de cuentas.
 - **PWA**: se instala en Android, iPhone y PC (manifiesto, íconos y _service worker_ con `vite-plugin-pwa`).
   - El service worker solo guarda la app (HTML, JS, CSS, fuentes); los datos siempre vienen de la API, que responde con `Cache-Control: no-store`.
   - Sin conexión la app abre y avisa; la orden en curso queda en el dispositivo.

@@ -173,7 +173,7 @@ pg_dump "postgresql://postgres.xxxx:CLAVE@aws-0-us-east-1.pooler.supabase.com:54
 ```
 
 Para restaurar en una base vacía: `pg_restore -d "(URL de la base nueva)" --no-owner sanfefer-AAAA-MM-DD.dump`.
-Los reportes también se pueden exportar a CSV desde **Reportes**.
+Los reportes también se pueden exportar en PDF desde **Reportes**.
 
 ## Problemas comunes
 

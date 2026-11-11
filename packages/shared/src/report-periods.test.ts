@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { toCsv } from './csv';
 import {
   addDays,
   daysInRange,
@@ -94,31 +93,6 @@ describe('periodos de reportes', () => {
     expect(tooLong.error?.issues[0]?.message).toBe('El rango no puede ser mayor a dos años');
     expect(salesReportQuerySchema.parse({ from: '2026-10-01', to: '2026-10-19' }).groupBy).toBe(
       'day',
-    );
-  });
-});
-
-describe('CSV', () => {
-  const columns = [
-    { header: 'Producto', value: (r: { name: string; total: number | null }) => r.name },
-    { header: 'Total (Q)', value: (r: { name: string; total: number | null }) => r.total },
-  ];
-
-  it('separa con coma, usa punto decimal y CRLF', () => {
-    expect(toCsv(columns, [{ name: 'Gallo', total: 40.5 }])).toBe(
-      'Producto,Total (Q)\r\nGallo,40.5\r\n',
-    );
-  });
-
-  it('entrecomilla comas, comillas y saltos de línea', () => {
-    expect(toCsv(columns, [{ name: 'Michelada "La Chula", grande', total: null }])).toBe(
-      'Producto,Total (Q)\r\n"Michelada ""La Chula"", grande",\r\n',
-    );
-  });
-
-  it('neutraliza textos que Excel ejecutaría como fórmula, pero no los números negativos', () => {
-    expect(toCsv(columns, [{ name: '=HYPERLINK("x")', total: -5 }])).toBe(
-      'Producto,Total (Q)\r\n"\'=HYPERLINK(""x"")",-5\r\n',
     );
   });
 });

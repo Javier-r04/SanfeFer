@@ -12,6 +12,9 @@ reportsRouter.use(requireAuth, requireRole('ADMIN'));
 reportsRouter.get('/sales', async (req: Request, res: Response) => {
   res.json({ report: await service.salesReport(parseQuery(salesReportQuerySchema, req)) });
 });
+reportsRouter.get('/balance', async (req: Request, res: Response) => {
+  res.json({ report: await service.balanceReport(parseQuery(salesReportQuerySchema, req)) });
+});
 reportsRouter.get('/products', async (req: Request, res: Response) => {
   res.json({ report: await service.productsReport(parseQuery(reportRangeSchema, req)) });
 });

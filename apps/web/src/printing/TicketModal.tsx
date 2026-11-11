@@ -1,4 +1,4 @@
-import { Download, FileDown, Printer, Usb } from 'lucide-react';
+import { FileDown, Printer, Usb } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -7,7 +7,7 @@ import { ErrorState, LoadingState } from '@/components/ui/States';
 import { useTicket } from '@/features/pos/api';
 import { errorMessage } from '@/lib/api';
 import { toast } from '@/stores/toast';
-import { canPrintSerial, downloadEscPos, downloadPdf, printInBrowser, printSerial } from './print';
+import { canPrintSerial, downloadPdf, printInBrowser, printSerial } from './print';
 import { TicketPreview } from './TicketPreview';
 
 export function TicketModal({ tabId, onClose }: { tabId: number | null; onClose: () => void }) {
@@ -86,15 +86,6 @@ export function TicketModal({ tabId, onClose }: { tabId: number | null; onClose:
                 Impresora térmica
               </Button>
             ) : null}
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Descargar comandos ESC/POS"
-              aria-label="Descargar comandos ESC/POS"
-              onClick={() => downloadEscPos(doc, width, `ticket-${tabId}`)}
-            >
-              <Download aria-hidden="true" className="size-5" />
-            </Button>
           </div>
         ) : undefined
       }

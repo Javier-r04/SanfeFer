@@ -1,4 +1,5 @@
 import type {
+  BalanceReportDto,
   InventoryReportDto,
   ProductsReportDto,
   ReportGroupBy,
@@ -27,6 +28,9 @@ function useReport<T>(name: string, params: Record<string, string>) {
 
 export const useSalesReport = (r: ReportRange, groupBy: ReportGroupBy) =>
   useReport<SalesReportDto>('sales', { from: r.from, to: r.to, groupBy });
+
+export const useBalanceReport = (r: ReportRange, groupBy: ReportGroupBy) =>
+  useReport<BalanceReportDto>('balance', { from: r.from, to: r.to, groupBy });
 
 export const useProductsReport = (r: ReportRange) =>
   useReport<ProductsReportDto>('products', { from: r.from, to: r.to });

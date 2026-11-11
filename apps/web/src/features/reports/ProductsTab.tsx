@@ -9,8 +9,9 @@ import { formatMoney, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useProductsReport, type ReportRange } from './api';
 import { BarList, ChartCard } from './charts';
-import { downloadCsv, productColumns } from './csv-export';
-import { CsvButton, DataTable, Refreshing, td, tdNum } from './ReportParts';
+import { downloadReportPdf } from './pdf-export';
+import { productsPdf } from './report-pdfs';
+import { PdfButton, DataTable, Refreshing, td, tdNum } from './ReportParts';
 
 const SORTS = {
   top: { label: 'Más vendidos', fn: (a: Row, b: Row) => b.units - a.units || b.sales - a.sales },
@@ -136,10 +137,9 @@ export function ProductsTab({ range }: { range: ReportRange }) {
           )}
         </Field>
         <div className="col-span-2 sm:ml-auto">
-          <CsvButton
-            label="Exportar CSV"
+          <PdfButton
             disabled={!rows.length || report.isPlaceholderData}
-            onExport={() => downloadCsv('productos', data, productColumns, rows)}
+            onExport={() => downloadReportPdf('productos', productsPdf(data, rows))}
           />
         </div>
       </div>

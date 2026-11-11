@@ -10,16 +10,18 @@ import { ErrorState, LoadingState } from '@/components/ui/States';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { fetchTabsReport, useProductsReport, useSalesReport, type ReportRange } from './api';
-import { BarList, ChartCard, ColumnChart, type ColumnDatum } from './charts';
-import { downloadCsv, salesColumns, tabColumns } from './csv-export';
-import { CsvButton, Delta, KpiCard, Refreshing } from './ReportParts';
+import { BarList, ChartCard, ChartLegend, ColumnChart, type ColumnDatum } from './charts';
+import { downloadReportPdf } from './pdf-export';
+import { PdfButton, Delta, KpiCard, Refreshing } from './ReportParts';
+import { summaryPdf, tabsPdf } from './report-pdfs';
 import { compactMoney, hourLabel, periodLabel, periodTitle, WEEKDAYS } from './report-format';
 
 const GROUP_TITLES: Record<ReportGroupBy, string> = {
-  day: 'Ventas por día',
-  week: 'Ventas por semana',
-  month: 'Ventas por mes',
+  day: 'Ventas y compras por día',
+  week: 'Ventas y compras por semana',
+  month: 'Ventas y compras por mes',
 };
+const SALES_VS_PURCHASES = { primary: 'Ventas', secondary: 'Compras' };
 
 function MoneyTable({
   rows,
@@ -212,6 +214,7 @@ export function SummaryTab({
     label: periodLabel(p.period, r.groupBy, r.series.length <= 7),
     title: periodTitle(p.period, r.groupBy),
     value: p.total,
+    secondary: p.purchases,
     details: [
       { label: 'Cuentas', value: String(p.tabs) },
       { label: 'Utilidad bruta', value: formatMoney(p.grossProfit) },
@@ -267,7 +270,7 @@ export function SummaryTab({
 
       <ChartCard
         title={GROUP_TITLES[r.groupBy]}
-        subtitle="Total cobrado por fecha de cobro"
+        subtitle="Total cobrado (fecha de cobro) y compras recibidas (fecha de compra)"
         actions={
           <>
             <Segmented
@@ -277,9 +280,9 @@ export function SummaryTab({
               options={REPORT_GROUPS.map((g) => ({ value: g, label: REPORT_GROUP_LABELS[g] }))}
               className="hidden sm:flex"
             />
-            <CsvButton
+            <PdfButton
               disabled={sales.isPlaceholderData}
-              onExport={() => downloadCsv('ventas', r, salesColumns(r.groupBy), r.series)}
+              onExport={() => downloadReportPdf('resumen', summaryPdf(r))}
             />
           </>
         }
@@ -292,11 +295,13 @@ export function SummaryTab({
               options={REPORT_GROUPS.map((g) => ({ value: g, label: REPORT_GROUP_LABELS[g] }))}
               className="sm:hidden"
             />
+            <ChartLegend series={SALES_VS_PURCHASES} />
             <ColumnChart
               data={series}
               label={GROUP_TITLES[r.groupBy]}
               formatValue={formatMoney}
               formatTick={compactMoney}
+              series={SALES_VS_PURCHASES}
             />
           </div>
         }
@@ -379,10 +384,9 @@ export function SummaryTab({
             Una fila por cuenta: folio, mesa, vendedor, descuento, servicio y forma de pago.
           </span>
         </p>
-        <CsvButton
-          label="Exportar CSV"
+        <PdfButton
           disabled={t.tabs === 0 || sales.isPlaceholderData}
-          onExport={async () => downloadCsv('cuentas', r, tabColumns, await fetchTabsReport(r))}
+          onExport={async () => downloadReportPdf('cuentas', tabsPdf(r, await fetchTabsReport(r)))}
         />
       </div>
     </Refreshing>

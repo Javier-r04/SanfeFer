@@ -1,4 +1,4 @@
-import { Download, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { FileDown, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { errorMessage } from '@/lib/api';
@@ -52,10 +52,10 @@ export function KpiCard({
   );
 }
 
-/** Botón de exportar: acepta filas ya cargadas o una función que las pide. */
-export function CsvButton({
+/** Botón de exportar a PDF (el único formato de exportación). */
+export function PdfButton({
   onExport,
-  label = 'CSV',
+  label = 'Exportar PDF',
   disabled,
 }: {
   onExport: () => void | Promise<void>;
@@ -80,7 +80,7 @@ export function CsvButton({
         }
       }}
     >
-      {busy ? null : <Download aria-hidden="true" className="size-4" />}
+      {busy ? null : <FileDown aria-hidden="true" className="size-4" />}
       {label}
     </Button>
   );
