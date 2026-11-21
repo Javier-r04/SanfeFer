@@ -38,7 +38,8 @@ export function ItemActionsModal({
   useEffect(() => {
     if (!item) return;
     setMode('menu');
-    setQuantity(item.quantity);
+    // Empieza en 1: cancelar toda la línea debe ser una decisión explícita.
+    setQuantity(1);
     setReason('');
     setPin('');
     setWasted(false);

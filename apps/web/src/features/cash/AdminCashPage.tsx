@@ -1,5 +1,5 @@
 import { getBusinessDate, type CashSessionDto } from '@sanfefer/shared';
-import { Printer, Wallet } from 'lucide-react';
+import { FileDown, Printer, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,9 @@ import { Tabs, useTab } from '@/components/ui/Tabs';
 import { PageHeader } from '@/features/common/ComingSoon';
 import { useSettings } from '@/features/settings/api';
 import { formatDateTime, formatMoney } from '@/lib/format';
-import { printInBrowser } from '@/printing/print';
+import { downloadPdf, printInBrowser } from '@/printing/print';
+import { errorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 import { useCashSessions, useDaily } from './api';
 import { CashSummary } from './CashSummary';
 import { cashCloseDocument, dailyCloseDocument } from './close-documents';
@@ -45,16 +47,35 @@ function DailyView() {
           )}
         </Field>
         {d ? (
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() =>
-              printInBrowser(dailyCloseDocument(d, settings.data), settings.data?.paperWidth ?? 80)
-            }
-          >
-            <Printer aria-hidden="true" className="size-5" />
-            Imprimir cierre del día
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() =>
+                printInBrowser(
+                  dailyCloseDocument(d, settings.data),
+                  settings.data?.paperWidth ?? 80,
+                )
+              }
+            >
+              <Printer aria-hidden="true" className="size-5" />
+              Imprimir cierre del día
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() =>
+                void downloadPdf(
+                  dailyCloseDocument(d, settings.data),
+                  settings.data?.paperWidth ?? 80,
+                  `cierre-dia-${d.date}`,
+                ).catch((e) => toast.error(errorMessage(e)))
+              }
+            >
+              <FileDown aria-hidden="true" className="size-5" />
+              Descargar PDF
+            </Button>
+          </div>
         ) : null}
       </div>
       <p className="-mt-2 text-sm text-muted">
@@ -82,7 +103,7 @@ function DailyView() {
             <StatCard label="Transferencia" value={formatMoney(d.transfer)} />
             <StatCard
               label="Descuentos · servicio"
-              value={`−${formatMoney(d.discounts)} · ${formatMoney(d.serviceCharges)}`}
+              value={`${d.discounts > 0 ? '−' : ''}${formatMoney(d.discounts)} · ${formatMoney(d.serviceCharges)}`}
             />
             <StatCard
               label="Cancelado"
@@ -255,20 +276,37 @@ function HistoryView() {
           onClose={() => setSelected(null)}
           title={`Caja #${selected.id}`}
           footer={
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1"
-              onClick={() =>
-                printInBrowser(
-                  cashCloseDocument(selected, settings.data),
-                  settings.data?.paperWidth ?? 80,
-                )
-              }
-            >
-              <Printer aria-hidden="true" className="size-5" />
-              Imprimir
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={() =>
+                  printInBrowser(
+                    cashCloseDocument(selected, settings.data),
+                    settings.data?.paperWidth ?? 80,
+                  )
+                }
+              >
+                <Printer aria-hidden="true" className="size-5" />
+                Imprimir
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 whitespace-nowrap"
+                onClick={() =>
+                  void downloadPdf(
+                    cashCloseDocument(selected, settings.data),
+                    settings.data?.paperWidth ?? 80,
+                    `cierre-caja-${selected.id}`,
+                  ).catch((e) => toast.error(errorMessage(e)))
+                }
+              >
+                <FileDown aria-hidden="true" className="size-5" />
+                Descargar PDF
+              </Button>
+            </>
           }
         >
           <CashSummary session={selected} />
