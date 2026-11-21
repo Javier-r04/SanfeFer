@@ -118,7 +118,7 @@ export interface InventoryItemDto {
   unit: MeasureUnit;
   stock: number;
   minStock: number;
-  /** Costo por unidad de la última compra. */
+  /** Costo por unidad: promedio ponderado de las entradas con costo. */
   purchaseCost: number;
   stockValue: number;
   /** Producto del menú que lo vende tal cual (p. ej. "Gallo" para la cerveza); null si es insumo. */

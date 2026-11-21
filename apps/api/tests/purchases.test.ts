@@ -106,8 +106,8 @@ describe('compras', () => {
     });
     expect(p.items[0]).toMatchObject({ name: 'Gallo', quantity: 24, unitCost: 7.5, subtotal: 180 });
 
-    // Gallo costaba 7 y esta compra lo trajo a 7.50: ese es su costo de compra ahora.
-    expect(await getItem(admin, gallo)).toMatchObject({ stock: 34, purchaseCost: 7.5 });
+    // Había 10 a Q7 y entraron 24 a Q7.50: (70 + 180) / 34 = Q7.3529.
+    expect(await getItem(admin, gallo)).toMatchObject({ stock: 34, purchaseCost: 7.3529 });
     expect(await getItem(admin, corona)).toMatchObject({ stock: 12, purchaseCost: 11.5 });
 
     const moves = await admin
@@ -156,7 +156,7 @@ describe('compras', () => {
     });
   });
 
-  it('anular devuelve el stock y el costo de la compra anterior', async () => {
+  it('anular devuelve el stock y saca la compra del promedio', async () => {
     const admin = await adminAgent();
     const { supplierId, gallo } = await setup(admin);
     const created = await admin
@@ -247,8 +247,28 @@ describe('compras', () => {
   });
 });
 
-describe('costo de compra', () => {
-  it('es el de la última compra; al anularla vuelve al de la compra anterior', async () => {
+describe('costo de compra (promedio ponderado)', () => {
+  it('una compra en oferta no abarata todo el inventario', async () => {
+    const admin = await adminAgent();
+    const { supplierId, corona } = await setup(admin);
+    const buy = (quantity: number, lineTotal: number) =>
+      admin
+        .post('/api/purchases')
+        .send({
+          supplierId,
+          purchasedAt: today,
+          items: [{ inventoryItemId: corona, quantity, lineTotal }],
+        })
+        .expect(201);
+    await buy(24, 192); // 24 a Q8.00
+    await buy(24, 144); // 24 en oferta a Q6.00
+    // (24 × 8 + 24 × 6) / 48 = Q7.00, no Q6.00.
+    expect(await getItem(admin, corona)).toMatchObject({ stock: 48, purchaseCost: 7 });
+    await buy(6, 30); // pocas unidades a Q5.00 pesan poco: (48 × 7 + 6 × 5) / 54
+    expect((await getItem(admin, corona)).purchaseCost).toBeCloseTo(6.7778, 4);
+  });
+
+  it('se promedia por cantidad y al anular una compra se saca del promedio', async () => {
     const admin = await adminAgent();
     const { supplierId, gallo } = await setup(admin);
     const buy = async (lineTotal: number) =>
@@ -264,9 +284,11 @@ describe('costo de compra', () => {
       ).body.purchase.id as number;
     await buy(180); // Q 7.50 c/u
     const second = await buy(192); // Q 8.00 c/u
-    expect((await getItem(admin, gallo)).purchaseCost).toBe(8);
+    // 10 a Q7 + 24 a Q7.50 + 24 a Q8: 442 / 58 = Q7.6207
+    expect((await getItem(admin, gallo)).purchaseCost).toBeCloseTo(7.6207, 4);
 
     await admin.post(`/api/purchases/${second}/void`).send({ reason: 'Duplicada' }).expect(200);
-    expect((await getItem(admin, gallo)).purchaseCost).toBe(7.5);
+    // Vuelve al promedio sin esa compra: 250 / 34 = Q7.3529
+    expect((await getItem(admin, gallo)).purchaseCost).toBeCloseTo(7.3529, 3);
   });
 });
