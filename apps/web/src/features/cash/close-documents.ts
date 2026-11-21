@@ -36,7 +36,7 @@ export function cashCloseDocument(session: CashSessionDto, settings?: SettingsDt
       ...(session.countedCash !== null ? [{ label: 'Contado', amount: session.countedCash }] : []),
       ...(session.difference !== null ? [{ label: 'Diferencia', amount: session.difference }] : []),
     ],
-    payments: [{ label: 'Ventas con tarjeta', amount: session.cardSales }],
+    payments: [{ label: 'Ventas por transferencia', amount: session.transferSales }],
     footer: session.notes ? [session.notes] : [],
   };
 }
@@ -66,7 +66,7 @@ export function dailyCloseDocument(d: DailyCloseDto, settings?: SettingsDto): Ti
     ],
     payments: [
       { label: 'Efectivo', amount: d.cash },
-      { label: 'Tarjeta', amount: d.card },
+      { label: 'Transferencia', amount: d.transfer },
       { label: `Cancelado (${d.cancelled.units} u)`, amount: d.cancelled.amount },
     ],
     footer: [],

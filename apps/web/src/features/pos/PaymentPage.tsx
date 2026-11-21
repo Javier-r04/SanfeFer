@@ -33,11 +33,10 @@ export function PaymentPage() {
   const cash = useCashStatus();
   const pay = useAddPayment();
   const removePayment = useDeletePayment();
-  const [method, setMethod] = useState<'CASH' | 'CARD'>('CASH');
+  const [method, setMethod] = useState<'CASH' | 'TRANSFER'>('CASH');
   const [parts, setParts] = useState(1);
   const [amount, setAmount] = useState('');
   const [received, setReceived] = useState('');
-  const [reference, setReference] = useState('');
   const [done, setDone] = useState<{ change: number } | null>(null);
   const [ticketOpen, setTicketOpen] = useState(false);
 
@@ -124,7 +123,6 @@ export function PaymentPage() {
           method,
           amount: amountNum,
           tendered: method === 'CASH' ? receivedNum : undefined,
-          reference: method === 'CARD' ? reference : null,
         },
       },
       {
@@ -135,7 +133,6 @@ export function PaymentPage() {
             toast.success(
               `Pago registrado${r.change ? ` · vuelto ${formatMoney(r.change)}` : ''}. Falta ${formatMoney(r.tab.billing.remaining)}.`,
             );
-            setReference('');
           }
         },
         onError: (e) => toast.error(errorMessage(e)),
@@ -198,8 +195,7 @@ export function PaymentPage() {
                 className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm"
               >
                 <span className="flex-1 font-semibold">
-                  {p.method === 'CASH' ? 'Efectivo' : 'Tarjeta'} · {formatTime(p.createdAt)}
-                  {p.reference ? ` · ${p.reference}` : ''}
+                  {p.method === 'CASH' ? 'Efectivo' : 'Transferencia'} · {formatTime(p.createdAt)}
                 </span>
                 <span className="tabular font-bold">{formatMoney(p.amount)}</span>
                 <button
@@ -250,7 +246,7 @@ export function PaymentPage() {
           onChange={setMethod}
           options={[
             { value: 'CASH', label: 'Efectivo' },
-            { value: 'CARD', label: 'Tarjeta' },
+            { value: 'TRANSFER', label: 'Transferencia' },
           ]}
         />
         <p className="-mt-2 text-xs text-muted">Pago mixto: cobra una parte con cada método.</p>
@@ -335,17 +331,10 @@ export function PaymentPage() {
             </div>
           </>
         ) : (
-          <Field label="N.º de voucher o autorización (opcional)">
-            {(a) => (
-              <Input
-                {...a}
-                value={reference}
-                maxLength={40}
-                inputMode="numeric"
-                onChange={(e) => setReference(e.target.value)}
-              />
-            )}
-          </Field>
+          <p className="rounded-xl bg-surface-2 px-3 py-2.5 text-sm text-muted">
+            Se registra como transferencia. Verifica que el dinero llegó a la cuenta antes de
+            confirmar.
+          </p>
         )}
       </div>
 

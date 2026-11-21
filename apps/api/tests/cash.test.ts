@@ -53,7 +53,7 @@ describe('caja', () => {
     const beer = await prisma.product.create({
       data: { name: 'Gallo', price: 20, categoryId: category.id },
     });
-    const pay = async (method: 'CASH' | 'CARD', qty: number) => {
+    const pay = async (method: 'CASH' | 'TRANSFER', qty: number) => {
       const tab = (await s.post('/api/pos/tabs').send({ customerName: 'X' }).expect(201)).body.tab;
       await s
         .post(`/api/pos/tabs/${tab.id}/orders`)
@@ -65,7 +65,7 @@ describe('caja', () => {
         .expect(201);
     };
     await pay('CASH', 3); // 60 en efectivo (recibe 100, da 40 de vuelto)
-    await pay('CARD', 2); // 40 con tarjeta
+    await pay('TRANSFER', 2); // 40 por transferencia
 
     await admin
       .post('/api/cash/movements')
@@ -82,7 +82,7 @@ describe('caja', () => {
     const current = (await admin.get('/api/cash/current').expect(200)).body.session;
     expect(current).toMatchObject({
       cashSales: 60,
-      cardSales: 40,
+      transferSales: 40,
       movementsOut: 50,
       expectedCash: 210,
       paymentsCount: 2,
@@ -129,7 +129,7 @@ describe('caja', () => {
       serviceCharges: 6,
       total: 66,
       cash: 66,
-      card: 0,
+      transfer: 0,
       unitsSold: 3,
     });
     expect(daily.bySeller[0]).toMatchObject({ name: 'Luis', tabs: 1, total: 66 });

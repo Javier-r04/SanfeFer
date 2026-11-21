@@ -56,8 +56,8 @@ export function CashSummary({ session }: { session: CashSessionDto }) {
         </dl>
       </div>
       <div className="flex justify-between rounded-2xl bg-surface-2 px-4 py-3 text-[15px]">
-        <span className="text-muted">Ventas con tarjeta (no entran a la caja)</span>
-        <span className="tabular font-bold">{formatMoney(session.cardSales)}</span>
+        <span className="text-muted">Ventas por transferencia (no entran a la caja)</span>
+        <span className="tabular font-bold">{formatMoney(session.transferSales)}</span>
       </div>
       {session.movements.length ? (
         <section className="flex flex-col gap-2">

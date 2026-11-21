@@ -65,7 +65,7 @@ enum DiscountType {
 
 enum PaymentMethod {
   CASH
-  CARD
+  TRANSFER
 }
 
 enum CashSessionStatus {
@@ -420,7 +420,7 @@ model OrderItemModifier {
   option    ModifierOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
 }
 
-// Varios pagos por cuenta → pago mixto (efectivo + tarjeta) y división en partes iguales
+// Varios pagos por cuenta → pago mixto (efectivo + transferencia) y división en partes iguales
 model Payment {
   id            Int           @id @default(autoincrement())
   tabId         Int
@@ -429,7 +429,7 @@ model Payment {
   amount        Decimal       @db.Decimal(10, 2) // monto aplicado a la cuenta
   tendered      Decimal?      @db.Decimal(10, 2) // efectivo recibido
   change        Decimal?      @db.Decimal(10, 2) // vuelto entregado
-  reference     String? // núm. de voucher/autorización de tarjeta
+  reference     String? // referencia opcional (ya no se pide al cobrar)
   receivedById  Int
   businessDate  DateTime      @db.Date
   createdAt     DateTime      @default(now())

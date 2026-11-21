@@ -141,7 +141,7 @@ export async function addPayment(tabId: number, raw: PaymentInput, user: AuthUse
         amount: D(input.amount),
         tendered: tendered === null ? null : D(tendered),
         change: tendered === null ? null : D(fromCents(toCents(tendered) - toCents(input.amount))),
-        reference: input.method === 'CARD' ? input.reference : null,
+        reference: null,
         receivedById: user.id,
         businessDate: new Date(`${getBusinessDate()}T00:00:00.000Z`),
       },
@@ -359,7 +359,7 @@ export async function getTicket(
             { label: 'Efectivo recibido', amount: p.tendered ?? p.amount },
             ...(p.change ? [{ label: 'Vuelto', amount: p.change }] : []),
           ]
-        : [{ label: `Tarjeta${p.reference ? ` (${p.reference})` : ''}`, amount: p.amount }],
+        : [{ label: 'Transferencia', amount: p.amount }],
     ),
     footer: settings.ticketFooter ? [settings.ticketFooter] : [],
   };

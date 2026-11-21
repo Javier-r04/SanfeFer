@@ -34,7 +34,7 @@ export function summaryPdf(r: SalesReportDto): PdfReport {
       ['Utilidad bruta', formatMoney(t.grossProfit)],
       ['Compras del periodo', formatMoney(sum(r.series, (s) => s.purchases))],
       ['Efectivo', formatMoney(t.cash)],
-      ['Tarjeta', formatMoney(t.card)],
+      ['Transferencia', formatMoney(t.transfer)],
       ['Margen', pct(t.margin)],
     ],
     tables: [
@@ -101,7 +101,7 @@ export function tabsPdf(range: ReportRange, tabs: TabReportRowDto[]): PdfReport 
       ['Cuentas', String(tabs.length)],
       ['Total cobrado', formatMoney(sum(tabs, (t) => t.total))],
       ['Efectivo', formatMoney(sum(tabs, (t) => t.cash))],
-      ['Tarjeta', formatMoney(sum(tabs, (t) => t.card))],
+      ['Transferencia', formatMoney(sum(tabs, (t) => t.transfer))],
     ],
     tables: [
       {
@@ -118,7 +118,7 @@ export function tabsPdf(range: ReportRange, tabs: TabReportRowDto[]): PdfReport 
           'Servicio',
           'Total',
           'Efectivo',
-          'Tarjeta',
+          'Transferencia',
         ],
         numeric: [0, 6, 7, 8, 9, 10, 11, 12],
         rows: tabs.map((t) => [
@@ -134,7 +134,7 @@ export function tabsPdf(range: ReportRange, tabs: TabReportRowDto[]): PdfReport 
           formatMoney(t.serviceCharge),
           formatMoney(t.total),
           formatMoney(t.cash),
-          formatMoney(t.card),
+          formatMoney(t.transfer),
         ]),
         foot: [
           'Total',
@@ -149,7 +149,7 @@ export function tabsPdf(range: ReportRange, tabs: TabReportRowDto[]): PdfReport 
           formatMoney(sum(tabs, (t) => t.serviceCharge)),
           formatMoney(sum(tabs, (t) => t.total)),
           formatMoney(sum(tabs, (t) => t.cash)),
-          formatMoney(sum(tabs, (t) => t.card)),
+          formatMoney(sum(tabs, (t) => t.transfer)),
         ],
       },
     ],

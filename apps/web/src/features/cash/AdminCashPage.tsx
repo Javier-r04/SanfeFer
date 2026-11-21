@@ -79,7 +79,7 @@ function DailyView() {
             <StatCard label="Ticket promedio" value={formatMoney(d.averageTicket)} />
             <StatCard label="Productos vendidos" value={d.unitsSold} />
             <StatCard label="Efectivo" value={formatMoney(d.cash)} />
-            <StatCard label="Tarjeta" value={formatMoney(d.card)} />
+            <StatCard label="Transferencia" value={formatMoney(d.transfer)} />
             <StatCard
               label="Descuentos · servicio"
               value={`−${formatMoney(d.discounts)} · ${formatMoney(d.serviceCharges)}`}
@@ -194,7 +194,7 @@ function HistoryView() {
               <th className="px-4 py-3 font-bold">Apertura</th>
               <th className="px-4 py-3 font-bold">Cierre</th>
               <th className="px-4 py-3 text-right font-bold">Efectivo</th>
-              <th className="px-4 py-3 text-right font-bold">Tarjeta</th>
+              <th className="px-4 py-3 text-right font-bold">Transferencia</th>
               <th className="px-4 py-3 text-right font-bold">Debe haber</th>
               <th className="px-4 py-3 font-bold">Arqueo</th>
               <th className="px-4 py-3">
@@ -217,7 +217,7 @@ function HistoryView() {
                   ) : null}
                 </td>
                 <td className="tabular px-4 py-3 text-right">{formatMoney(s.cashSales)}</td>
-                <td className="tabular px-4 py-3 text-right">{formatMoney(s.cardSales)}</td>
+                <td className="tabular px-4 py-3 text-right">{formatMoney(s.transferSales)}</td>
                 <td className="tabular px-4 py-3 text-right font-bold">
                   {formatMoney(s.expectedCash)}
                 </td>

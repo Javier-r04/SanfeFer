@@ -13,7 +13,7 @@ const yesterday = addDays(today, -1);
 /**
  * Dos cuentas de hoy:
  * - Luis: 3 Gallo (Q60) en efectivo; además pidió 1 más que se canceló antes de prepararse.
- * - Admin: 2 Gallo (Q40) − 10 % + servicio 10 % = Q39.60 con tarjeta.
+ * - Admin: 2 Gallo (Q40) − 10 % + servicio 10 % = Q39.60 por transferencia.
  * Cada Gallo cuesta Q8 (1 unidad del inventario). Además se registra una merma de 2 unidades.
  */
 async function scenario() {
@@ -84,7 +84,7 @@ async function scenario() {
     .expect(200);
   await admin
     .post(`/api/pos/tabs/${tab2.id}/payments`)
-    .send({ method: 'CARD', amount: 39.6, reference: '1234' })
+    .send({ method: 'TRANSFER', amount: 39.6, reference: '1234' })
     .expect(201);
 
   await admin
@@ -125,7 +125,7 @@ describe('reportes', () => {
       margin: 0.5833,
       averageTicket: 49.8,
       cash: 60,
-      card: 39.6,
+      transfer: 39.6,
       wasteCost: 16,
       profitAfterWaste: 40,
       cancelled: { units: 1, amount: 20 },
@@ -163,7 +163,7 @@ describe('reportes', () => {
 
     const day = (await admin.get(`/api/reports/sales?from=${today}&to=${today}`).expect(200)).body
       .report;
-    expect(day.totals).toMatchObject({ tabs: 1, total: 60, card: 0 });
+    expect(day.totals).toMatchObject({ tabs: 1, total: 60, transfer: 0 });
     expect(day.previous).toMatchObject({ tabs: 1, total: 39.6, grossProfit: 20 });
 
     const two = (
@@ -257,7 +257,7 @@ describe('reportes', () => {
         units: 3,
         total: 60,
         cash: 60,
-        card: 0,
+        transfer: 0,
       }),
       expect.objectContaining({
         customerName: 'Mesa VIP',
@@ -268,7 +268,7 @@ describe('reportes', () => {
         serviceCharge: 3.6,
         total: 39.6,
         cash: 0,
-        card: 39.6,
+        transfer: 39.6,
       }),
     ]);
     expect(tabs[0].businessDate).toBe(today);

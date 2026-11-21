@@ -325,7 +325,7 @@ export interface SendOrderResult {
 
 // ───────────── Cobro y caja ─────────────
 
-export type PaymentMethod = 'CASH' | 'CARD';
+export type PaymentMethod = 'CASH' | 'TRANSFER';
 
 export interface PaymentDto {
   id: number;
@@ -380,7 +380,7 @@ export interface CashSessionDto {
   closedBy: { id: number; name: string } | null;
   closedAt: string | null;
   cashSales: number;
-  cardSales: number;
+  transferSales: number;
   movementsIn: number;
   movementsOut: number;
   /** Fondo + ventas en efectivo + entradas − salidas. */
@@ -400,7 +400,7 @@ export interface DailyCloseDto {
   serviceCharges: number;
   total: number;
   cash: number;
-  card: number;
+  transfer: number;
   averageTicket: number;
   unitsSold: number;
   cancelled: { units: number; amount: number };
@@ -447,7 +447,7 @@ export interface SalesReportDto {
   groupBy: ReportGroupBy;
   totals: SalesTotalsDto & {
     cash: number;
-    card: number;
+    transfer: number;
     /** Costo de las mermas registradas en el rango. */
     wasteCost: number;
     profitAfterWaste: number;
@@ -576,5 +576,5 @@ export interface TabReportRowDto {
   serviceCharge: number;
   total: number;
   cash: number;
-  card: number;
+  transfer: number;
 }
