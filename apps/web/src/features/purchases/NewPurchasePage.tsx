@@ -40,7 +40,7 @@ const newLine = () => ({
   lineTotal: Number.NaN,
 });
 
-/** Compara el costo de esta compra con el de la compra anterior del artículo. */
+/** Compara el costo de esta compra con el costo de compra actual (promedio) y muestra cómo queda. */
 function CostHint({
   item,
   quantity,
@@ -57,16 +57,22 @@ function CostHint({
   let tone = 'text-muted';
   if (item.purchaseCost > 0) {
     const diff = (unitCost - item.purchaseCost) / item.purchaseCost;
-    if (Math.abs(diff) < 0.005) comparison = ' · igual que la compra anterior';
+    if (Math.abs(diff) < 0.005) comparison = ' · igual que el costo actual';
     else {
-      comparison = ` · ${diff > 0 ? '↑' : '↓'} ${formatPercent(Math.abs(diff))} ${diff > 0 ? 'más caro' : 'más barato'} que la compra anterior (${formatUnitCost(item.purchaseCost)})`;
+      comparison = ` · ${diff > 0 ? '↑' : '↓'} ${formatPercent(Math.abs(diff))} ${diff > 0 ? 'más caro' : 'más barato'} que el costo actual (${formatUnitCost(item.purchaseCost)})`;
       if (diff > 0.1) tone = 'text-warning-ink font-bold';
     }
   }
+  // El costo de compra se promedia según la cantidad (igual que en el servidor).
+  const newCost =
+    item.stock > 0
+      ? (item.stock * item.purchaseCost + quantity * unitCost) / (item.stock + quantity)
+      : unitCost;
   return (
     <p className={cn('text-sm', tone)}>
       {formatUnitCost(unitCost)} por {unit}
-      {comparison}. Quedarán {formatQty(item.stock + quantity, item.unit)}.
+      {comparison}. Quedarán {formatQty(item.stock + quantity, item.unit)} con costo de compra{' '}
+      {formatUnitCost(newCost)}.
     </p>
   );
 }

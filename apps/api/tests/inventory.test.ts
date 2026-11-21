@@ -97,7 +97,7 @@ describe('artículos de inventario', () => {
 });
 
 describe('movimientos', () => {
-  it('una entrada manual con costo fija el costo de compra', async () => {
+  it('una entrada manual con costo se promedia con la existencia', async () => {
     const admin = await adminAgent();
     const item = await createItem(admin, {
       name: 'Corona',
@@ -109,8 +109,8 @@ describe('movimientos', () => {
       .post(`/api/inventory/items/${item.id}/movements`)
       .send({ type: 'MANUAL_IN', quantity: 30, unitCost: 12 })
       .expect(201);
-    // El costo de compra es el de la última entrada, no un promedio.
-    expect(res.body.item).toMatchObject({ stock: 40, purchaseCost: 12 });
+    // Promedio ponderado: (10 × 10 + 30 × 12) / 40 = 11.50.
+    expect(res.body.item).toMatchObject({ stock: 40, purchaseCost: 11.5 });
     expect(res.body.movement).toMatchObject({
       type: 'MANUAL_IN',
       quantity: 30,

@@ -9,8 +9,42 @@ export async function lockInventoryItems(tx: Tx, ids: number[]) {
   await tx.$queryRaw`SELECT id FROM "InventoryItem" WHERE id IN (${Prisma.join(sorted)}) ORDER BY id FOR UPDATE`;
 }
 
-/** Entradas que fijan el costo de compra del artículo (el de la más reciente). */
+/** Entradas que promedian el costo de compra del artículo (las que traen costo por unidad). */
 const COST_SETTING: MovementType[] = ['INITIAL', 'PURCHASE', 'MANUAL_IN'];
+
+/**
+ * Costo promedio ponderado por cantidad: (existencia × costo + entrada × costo de la entrada)
+ * ÷ existencia nueva. Si no había existencia (o era negativa), el costo es el de la entrada.
+ */
+export function averageCostIn(
+  stockBefore: Prisma.Decimal,
+  costBefore: Prisma.Decimal,
+  qty: Prisma.Decimal,
+  unitCost: Prisma.Decimal,
+) {
+  if (stockBefore.lte(0)) return unitCost.toDecimalPlaces(4);
+  return stockBefore
+    .times(costBefore)
+    .plus(qty.times(unitCost))
+    .div(stockBefore.plus(qty))
+    .toDecimalPlaces(4);
+}
+
+/**
+ * Deshace una entrada del promedio (anular una compra): saca su cantidad y su costo.
+ * Si ya no queda existencia, el costo se conserva.
+ */
+export function averageCostOut(
+  stockBefore: Prisma.Decimal,
+  costBefore: Prisma.Decimal,
+  qty: Prisma.Decimal,
+  unitCost: Prisma.Decimal,
+) {
+  const remaining = stockBefore.minus(qty);
+  if (remaining.lte(0)) return costBefore;
+  const cost = stockBefore.times(costBefore).minus(qty.times(unitCost)).div(remaining);
+  return cost.lt(0) ? new Prisma.Decimal(0) : cost.toDecimalPlaces(4);
+}
 
 export interface StockChange {
   itemId: number;
@@ -35,29 +69,17 @@ export async function applyStockChange(tx: Tx, change: StockChange) {
 
   const stockAfter = item.stock.plus(change.delta);
   let purchaseCost = item.purchaseCost;
-  if (change.type === 'PURCHASE_VOID') {
-    // Al anular una compra, el costo vuelve al de la entrada vigente más reciente.
-    const previous = await tx.inventoryMovement.findFirst({
-      where: {
-        inventoryItemId: item.id,
-        type: { in: COST_SETTING },
-        unitCost: { not: null },
-        // Entradas sin compra (inicial, manual) o de compras vigentes; nunca la línea que se anula.
-        // (Un NOT sobre purchaseItemId descartaría también las filas sin compra: en SQL, NULL <> x no es verdadero.)
-        OR: [
-          { purchaseItemId: null },
-          {
-            purchaseItemId: change.purchaseItemId ? { not: change.purchaseItemId } : undefined,
-            purchaseItem: { purchase: { status: 'RECEIVED' } },
-          },
-        ],
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    });
-    if (previous?.unitCost) purchaseCost = previous.unitCost;
+  if (change.type === 'PURCHASE_VOID' && change.unitCost != null) {
+    // Anular una compra la saca del promedio, como si no hubiera entrado.
+    purchaseCost = averageCostOut(
+      item.stock,
+      item.purchaseCost,
+      change.delta.neg(),
+      change.unitCost,
+    );
   } else if (change.delta.gt(0) && change.unitCost != null && COST_SETTING.includes(change.type)) {
-    // Costo de compra = lo que se pagó en la última entrada con costo.
-    purchaseCost = change.unitCost.toDecimalPlaces(4);
+    // Costo de compra = promedio ponderado de lo que hay y lo que entra.
+    purchaseCost = averageCostIn(item.stock, item.purchaseCost, change.delta, change.unitCost);
   }
 
   const updated = await tx.inventoryItem.update({
