@@ -91,7 +91,7 @@ export function SettingsPage() {
           </Button>
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="flex flex-col gap-6">
           <section className="grid gap-4 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
             <h2 className="text-lg font-extrabold sm:col-span-2">Negocio (aparece en el ticket)</h2>
