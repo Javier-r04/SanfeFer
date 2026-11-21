@@ -162,7 +162,7 @@ export async function salesReport(q: SalesReportQuery): Promise<SalesReportDto> 
   const acc = sumRows(rows);
   const totals = toTotals(acc);
   const wasteCost = [...waste.values()].reduce((s, v) => s + v, 0);
-  const paid = (method: 'CASH' | 'CARD') =>
+  const paid = (method: 'CASH' | 'TRANSFER') =>
     fromCents(cents(payments.find((p) => p.method === method)?._sum.amount ?? 0));
 
   // Serie sin huecos: los periodos sin ventas salen en cero.
@@ -193,7 +193,7 @@ export async function salesReport(q: SalesReportQuery): Promise<SalesReportDto> 
     totals: {
       ...totals,
       cash: paid('CASH'),
-      card: paid('CARD'),
+      transfer: paid('TRANSFER'),
       wasteCost: fromCents(wasteCost),
       profitAfterWaste: fromCents(acc.subtotal - acc.discounts - acc.cost - wasteCost),
       cancelled: {
@@ -430,7 +430,7 @@ export async function tabsReport(q: ReportRangeQuery): Promise<TabReportRowDto[]
     },
     orderBy: [{ closedAt: 'asc' }, { id: 'asc' }],
   });
-  const byMethod = (t: (typeof tabs)[number], method: 'CASH' | 'CARD') =>
+  const byMethod = (t: (typeof tabs)[number], method: 'CASH' | 'TRANSFER') =>
     fromCents(
       t.payments.filter((p) => p.method === method).reduce((s, p) => s + cents(p.amount), 0),
     );
@@ -447,7 +447,7 @@ export async function tabsReport(q: ReportRangeQuery): Promise<TabReportRowDto[]
     serviceCharge: Number(t.serviceCharge),
     total: Number(t.total),
     cash: byMethod(t, 'CASH'),
-    card: byMethod(t, 'CARD'),
+    transfer: byMethod(t, 'TRANSFER'),
   }));
 }
 

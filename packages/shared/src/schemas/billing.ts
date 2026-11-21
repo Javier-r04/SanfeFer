@@ -42,16 +42,10 @@ export type TabChargesInput = z.input<typeof tabChargesSchema>;
 
 export const paymentSchema = z
   .object({
-    method: z.enum(['CASH', 'CARD'], { error: 'Elige efectivo o tarjeta' }),
+    method: z.enum(['CASH', 'TRANSFER'], { error: 'Elige efectivo o transferencia' }),
     amount: decimal('El monto', { min: 0, max: 999999.99, places: 2, minExclusive: true }),
     /** Efectivo recibido (solo efectivo); si falta se asume el monto exacto. */
     tendered: decimal('El efectivo recibido', { min: 0, max: 999999.99, places: 2 }).optional(),
-    reference: z
-      .string()
-      .trim()
-      .max(40, 'La referencia no puede tener más de 40 caracteres')
-      .nullish()
-      .transform((v) => (v ? v : null)),
   })
   .refine((p) => p.method !== 'CASH' || p.tendered === undefined || p.tendered >= p.amount, {
     path: ['tendered'],

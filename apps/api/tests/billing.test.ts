@@ -144,7 +144,7 @@ describe('cobro', () => {
     const { seller, tabId } = await setup();
     const first = await seller
       .post(`/api/pos/tabs/${tabId}/payments`)
-      .send({ method: 'CARD', amount: 37.5, reference: '0042' })
+      .send({ method: 'TRANSFER', amount: 37.5, reference: '0042' })
       .expect(201);
     expect(first.body.closed).toBe(false);
     expect(first.body.tab.billing).toMatchObject({ paid: 37.5, remaining: 37.5 });
@@ -163,7 +163,7 @@ describe('cobro', () => {
       .expect(201);
     expect(last.body).toMatchObject({ closed: true, change: 12.5 });
     expect(last.body.tab.billing.payments.map((p: { method: string }) => p.method)).toEqual([
-      'CARD',
+      'TRANSFER',
       'CASH',
     ]);
   });
@@ -181,7 +181,7 @@ describe('cobro', () => {
     const { seller, tabId } = await setup();
     await seller
       .post(`/api/pos/tabs/${tabId}/payments`)
-      .send({ method: 'CARD', amount: 70 })
+      .send({ method: 'TRANSFER', amount: 70 })
       .expect(201);
     const tab = await getTab(seller, tabId);
     const michelada = tab.orders[0].items.find(

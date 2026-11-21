@@ -399,7 +399,7 @@ export async function seedHistory(
         closedAt,
       });
 
-      const pay = (method: 'CASH' | 'CARD', amountCents: number, at: Date) => {
+      const pay = (method: 'CASH' | 'TRANSFER', amountCents: number, at: Date) => {
         const amount = fromCents(amountCents);
         let tendered: number | null = null;
         if (method === 'CASH') {
@@ -415,7 +415,7 @@ export async function seedHistory(
           amount: D(amount),
           tendered: tendered === null ? null : D(tendered),
           change: tendered === null ? null : D(fromCents(toCents(tendered) - amountCents)),
-          reference: method === 'CARD' ? String(rng.int(100000, 999999)) : null,
+          reference: null,
           receivedById: seller.id,
           businessDate: new Date(`${day}T00:00:00.000Z`),
           createdAt: at,
@@ -424,10 +424,10 @@ export async function seedHistory(
       const totalCents = toCents(totals.total);
       const r = rng.next();
       if (r < 0.62) pay('CASH', totalCents, closedAt);
-      else if (r < 0.92) pay('CARD', totalCents, closedAt);
+      else if (r < 0.92) pay('TRANSFER', totalCents, closedAt);
       else {
         const half = Math.floor(totalCents / 2);
-        pay('CARD', half, addMinutes(closedAt, -2));
+        pay('TRANSFER', half, addMinutes(closedAt, -2));
         pay('CASH', totalCents - half, closedAt);
       }
     }

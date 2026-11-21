@@ -106,10 +106,10 @@ function ProfitAndLoss({ t }: { t: SalesReportDto['totals'] }) {
 }
 
 function Payments({ t }: { t: SalesReportDto['totals'] }) {
-  const sum = t.cash + t.card;
+  const sum = t.cash + t.transfer;
   const rows = [
     { label: 'Efectivo', value: t.cash },
-    { label: 'Tarjeta', value: t.card },
+    { label: 'Transferencia', value: t.transfer },
   ];
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4">

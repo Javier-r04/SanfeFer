@@ -63,9 +63,11 @@ export function AdminHomePage() {
         <StatCard label="Vendido hoy" value={daily.data ? formatMoney(daily.data.total) : '—'} />
         <StatCard label="Cuentas cobradas" value={daily.data?.tabsPaid ?? '—'} />
         <StatCard
-          label="Efectivo · tarjeta"
+          label="Efectivo · transferencia"
           value={
-            daily.data ? `${formatMoney(daily.data.cash)} · ${formatMoney(daily.data.card)}` : '—'
+            daily.data
+              ? `${formatMoney(daily.data.cash)} · ${formatMoney(daily.data.transfer)}`
+              : '—'
           }
         />
         <StatCard label="Cuentas abiertas" value={daily.data?.openTabs ?? '—'} />

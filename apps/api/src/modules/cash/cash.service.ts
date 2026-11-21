@@ -40,7 +40,7 @@ function toSessionDto(s: SessionRow): CashSessionDto {
   const sum = (rows: { amount: Prisma.Decimal }[]) =>
     rows.reduce((acc, r) => acc + toCents(Number(r.amount)), 0);
   const cash = sum(s.payments.filter((p) => p.method === 'CASH'));
-  const card = sum(s.payments.filter((p) => p.method === 'CARD'));
+  const transfer = sum(s.payments.filter((p) => p.method === 'TRANSFER'));
   const mIn = sum(s.movements.filter((m) => m.type === 'IN'));
   const mOut = sum(s.movements.filter((m) => m.type === 'OUT'));
   const expected = toCents(Number(s.openingAmount)) + cash + mIn - mOut;
@@ -53,7 +53,7 @@ function toSessionDto(s: SessionRow): CashSessionDto {
     closedBy: s.closedBy,
     closedAt: s.closedAt?.toISOString() ?? null,
     cashSales: fromCents(cash),
-    cardSales: fromCents(card),
+    transferSales: fromCents(transfer),
     movementsIn: fromCents(mIn),
     movementsOut: fromCents(mOut),
     // Cerrada: se muestra lo que se calculó al cerrar.
@@ -249,8 +249,8 @@ export async function getDaily(date = getBusinessDate()): Promise<DailyCloseDto>
     cash: fromCents(
       payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + cents(p.amount), 0),
     ),
-    card: fromCents(
-      payments.filter((p) => p.method === 'CARD').reduce((s, p) => s + cents(p.amount), 0),
+    transfer: fromCents(
+      payments.filter((p) => p.method === 'TRANSFER').reduce((s, p) => s + cents(p.amount), 0),
     ),
     averageTicket: tabs.length ? fromCents(Math.round(total / tabs.length)) : 0,
     unitsSold: [...products.values()].reduce((s, p) => s + p.quantity, 0),
