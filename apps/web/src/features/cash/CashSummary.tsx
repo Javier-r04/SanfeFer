@@ -18,7 +18,7 @@ export function CashSummary({ session }: { session: CashSessionDto }) {
             <div key={label} className="flex justify-between">
               <dt className="text-muted">{label}</dt>
               <dd className="tabular font-semibold">
-                {value < 0 ? `−${formatMoney(-value)}` : formatMoney(value)}
+                {value < 0 ? `−${formatMoney(-value)}` : formatMoney(value || 0)}
               </dd>
             </div>
           ))}

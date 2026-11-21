@@ -1,5 +1,5 @@
 import type { CashSessionDto } from '@sanfefer/shared';
-import { ArrowDownToLine, ArrowUpFromLine, Lock, Printer, Wallet } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, FileDown, Lock, Printer, Wallet } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
@@ -9,7 +9,7 @@ import { PosHeader } from '@/features/pos/components';
 import { useSettings } from '@/features/settings/api';
 import { errorMessage } from '@/lib/api';
 import { formatMoney, formatTime } from '@/lib/format';
-import { printInBrowser } from '@/printing/print';
+import { downloadPdf, printInBrowser } from '@/printing/print';
 import { toast } from '@/stores/toast';
 import { useCurrentCash, useOpenCash } from './api';
 import { CloseCashDialog, MovementDialog } from './CashDialogs';
@@ -106,7 +106,22 @@ export function PosCashPage() {
               <h2 className="text-lg font-extrabold">Caja #{closed.id} cerrada</h2>
             </div>
             <CashSummary session={closed} />
-            <div className="flex gap-2.5">
+            <div className="flex flex-wrap gap-2.5">
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 whitespace-nowrap"
+                onClick={() =>
+                  void downloadPdf(
+                    cashCloseDocument(closed, settings.data),
+                    settings.data?.paperWidth ?? 80,
+                    `cierre-caja-${closed.id}`,
+                  ).catch((e) => toast.error(errorMessage(e)))
+                }
+              >
+                <FileDown aria-hidden="true" className="size-5" />
+                Descargar PDF
+              </Button>
               <Button
                 variant="secondary"
                 size="lg"

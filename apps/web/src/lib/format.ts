@@ -13,7 +13,11 @@ const percent = new Intl.NumberFormat('es-GT', { style: 'percent', maximumFracti
 
 export const formatDateTime = (iso: string | Date) => dateTime.format(new Date(iso));
 export const formatTime = (iso: string | Date) => time.format(new Date(iso));
-export const formatMoney = (value: number | string) => money.format(Number(value));
+/** Montos en quetzales. Un cero negativo (p. ej. −0 por un descuento de 0) se muestra como Q 0.00. */
+export const formatMoney = (value: number | string) => {
+  const n = Number(value);
+  return money.format(Math.abs(n) < 0.005 ? 0 : n);
+};
 export const formatNumber = (value: number) => number.format(value);
 export const formatPercent = (ratio: number) => percent.format(ratio);
 export const formatQty = (value: number, unit: MeasureUnit) =>
